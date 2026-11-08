@@ -170,14 +170,16 @@ class SessionStore {
     }
 
     /**
-     * Writes to a temporary file, then renames it over the target, so an interrupted
-     * write never truncates an existing session.
+     * Writes to a temporary file unique to this write, then renames it over the target, so
+     * an interrupted write never truncates an existing session and concurrent writers (for
+     * example two InDesign instances) never publish each other's partial file.
      * @param {object} session
      * @returns {Promise<void>}
      */
     async writeAtomically(session) {
         const filePath = this.filePathFor(session.id);
-        const tempPath = `${filePath}.tmp`;
+        const unique   = `${this.now().getTime().toString(36)}${Math.floor(this.random() * 36 ** 6).toString(36)}`;
+        const tempPath = `${filePath}.${unique}.tmp`;
         await this.fs.writeFile(tempPath, serializeSession(session), { encoding : 'utf-8' });
         await this.fs.rename(tempPath, filePath);
     }

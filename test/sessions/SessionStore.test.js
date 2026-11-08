@@ -125,8 +125,31 @@ describe('SessionStore', () => {
 
         await expect(store.update(created.id, { name : 'Renamed' })).rejects.toThrow('operation not permitted');
         expect(await readStored(created.id)).toBe(before);
-        expect(await fsPromises.readdir(sessionsDirectory)).toContain(`${created.id}.json.tmp`);
+        expect((await fsPromises.readdir(sessionsDirectory)).some((name) => name.startsWith(`${created.id}.json.`) && name.endsWith('.tmp'))).toBe(true);
         expect(await createStore().store.list()).toEqual({ sessions : [created], invalidFiles : [] });
+    });
+
+    test('concurrent updates of one session never publish a partially written file', async () => {
+        // Scenario: two InDesign instances rename the same session at the same time; each write pauses midway.
+        const { store: writer } = createStore();
+        const created = await writer.create({ name : 'Spring catalog', files : kFILES });
+
+        const interleavingFs = { ...createNodeFs(), writeFile : async (filePath, data, options) => {
+            const half = Math.floor(data.length / 2);
+            await fsPromises.writeFile(filePath, data.slice(0, half), options);
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            await fsPromises.appendFile(filePath, data.slice(half), options);
+        } };
+        const first  = createStore({ fs : interleavingFs }).store;
+        const second = createStore({ fs : interleavingFs }).store;
+
+        await Promise.allSettled([
+            first.update(created.id, { name : 'Renamed by the first instance' }),
+            second.update(created.id, { name : 'Renamed by the second instance with a longer name' }),
+        ]);
+
+        const stored = await createStore().store.get(created.id);
+        expect(['Renamed by the first instance', 'Renamed by the second instance with a longer name']).toContain(stored.name);
     });
 
     test('list reports invalid files and never modifies them', async () => {
