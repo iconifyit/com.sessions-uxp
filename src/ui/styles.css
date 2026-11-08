@@ -133,7 +133,9 @@ body {
     cursor  : default;
 }
 
-.context-menu-item:hover {
+.context-menu-item:hover,
+.context-menu-item:focus {
+    outline    : none;
     background : var(--row-selected);
 }
 
