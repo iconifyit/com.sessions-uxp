@@ -24,11 +24,18 @@ module.exports = [
         },
     },
     {
-        files           : ['**/*.mjs'],
+        // ES modules, and UXP scripts, which allow top-level await alongside require.
+        files           : ['**/*.mjs', '**/*.idjs'],
         languageOptions : {
             ecmaVersion : 2022,
             sourceType  : 'module',
             globals     : globals.node,
+        },
+        rules : {
+            'no-unused-vars' : ['error', { argsIgnorePattern : '^_', caughtErrorsIgnorePattern : '^_' }],
+            'prefer-const'   : 'error',
+            'no-var'         : 'error',
+            'eqeqeq'         : ['error', 'always'],
         },
     },
     {
