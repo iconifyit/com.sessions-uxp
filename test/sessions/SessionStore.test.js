@@ -129,6 +129,32 @@ describe('SessionStore', () => {
         expect(await createStore().store.list()).toEqual({ sessions : [created], invalidFiles : [] });
     });
 
+    test('create regenerates the id instead of replacing a session with the same id', async () => {
+        // Scenario: a second InDesign instance saves in the same second and draws the same random suffix.
+        const { store } = createStore();
+        const first     = await store.create({ name : 'Morning layout', files : kFILES });
+        const before    = await readStored(first.id);
+        const alphabet  = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const sameSuffixThenOthers = [...first.id.slice(-4)].map((char) => (alphabet.indexOf(char) + 0.5) / alphabet.length);
+        const { store: otherInstance } = createStore({ random : () => (sameSuffixThenOthers.length > 0 ? sameSuffixThenOthers.shift() : 0.99) });
+
+        const second = await otherInstance.create({ name : 'Second save in the same second', files : kFILES });
+
+        expect(second.id).not.toBe(first.id);
+        expect(await readStored(first.id)).toBe(before);
+        expect((await store.list()).sessions.map((s) => s.name).sort()).toEqual(['Morning layout', 'Second save in the same second']);
+    });
+
+    test('create gives up after repeated id collisions without replacing anything', async () => {
+        // Scenario: a broken random source always yields the same id.
+        const { store } = createStore({ random : () => 0.5 });
+        const first     = await store.create({ name : 'Morning layout', files : kFILES });
+        const before    = await readStored(first.id);
+
+        await expect(store.create({ name : 'Collides every time', files : kFILES })).rejects.toThrow(/unique session id/);
+        expect(await readStored(first.id)).toBe(before);
+    });
+
     test('concurrent updates of one session never publish a partially written file', async () => {
         // Scenario: two InDesign instances rename the same session at the same time; each write pauses midway.
         const { store: writer } = createStore();

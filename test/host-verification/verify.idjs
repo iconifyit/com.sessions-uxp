@@ -170,6 +170,32 @@ const run = async () => {
     for (let index = 0; index < app.documents.length; index++) {
         openNow.push(app.documents.item(index));
     }
+    await step('exclusive writes', async () => {
+        const target = `${kWORK}/delivery/exclusive.txt`;
+        fs.writeFileSync(target, 'kept', { encoding : 'utf-8' });
+        let copyError = null;
+        try {
+            await platform.copyFile(paths.catalog, target);
+        }
+        catch (error) {
+            copyError = error;
+        }
+        const kept = await fs.readFile(target, { encoding : 'utf-8' });
+        check('Platform.copyFile refuses to replace an existing file', copyError !== null && kept === 'kept', { code : copyError && copyError.code, kept });
+
+        const stuck = new SessionStore({ fs, directory : `${kWORK}/sessions-collide`, separator : '/', random : () => 0.5 });
+        const original = await stuck.create({ name : 'First', files : [paths.catalog] });
+        let createError = null;
+        try {
+            await stuck.create({ name : 'Same id every time', files : [paths.catalog] });
+        }
+        catch (error) {
+            createError = error;
+        }
+        const reread = await stuck.get(original.id);
+        check('SessionStore.create never replaces a session with the same id', createError !== null && reread.name === 'First', { error : String(createError), name : reread.name });
+    });
+
     await step('remove', async () => {
         const doomed = await store.create({ name : 'Delete me', files : [paths.catalog] });
         await store.remove(doomed.id);

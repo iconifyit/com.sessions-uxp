@@ -10,6 +10,8 @@ const {
 } = require('./session.js');
 const { isAlreadyExistsError, isNotFoundError } = require('../shared/fsErrors.js');
 
+const kMAX_ID_ATTEMPTS = 10;
+
 /**
  * Raised when no stored session exists for an id.
  */
@@ -28,7 +30,7 @@ class SessionNotFoundError extends Error {
  *
  * The file-system dependency is injected and limited to this subset, which both the
  * UXP `fs` module and the Node test adapter provide: `mkdir`, `readdir`, `readFile`,
- * `writeFile`, `rename`, `unlink`.
+ * `writeFile` (including the exclusive `wx` flag), `rename`, `unlink`.
  */
 class SessionStore {
     /**
@@ -117,11 +119,22 @@ class SessionStore {
      * @returns {Promise<object>} The stored session.
      */
     async create({ name, description, files }) {
-        const now     = this.now();
-        const session = createSession({ id : generateId(now, this.random), name, description, files, now });
+        const now = this.now();
         await this.ensureDirectory();
-        await this.writeAtomically(session);
-        return session;
+        for (let attempt = 0; attempt < kMAX_ID_ATTEMPTS; attempt++) {
+            const session = createSession({ id : generateId(now, this.random), name, description, files, now });
+            try {
+                // Exclusive create: a session that already uses this id is never replaced.
+                await this.fs.writeFile(this.filePathFor(session.id), serializeSession(session), { encoding : 'utf-8', flag : 'wx' });
+                return session;
+            }
+            catch (error) {
+                if (!isAlreadyExistsError(error)) {
+                    throw error;
+                }
+            }
+        }
+        throw new Error(`Could not choose a unique session id after ${kMAX_ID_ATTEMPTS} attempts.`);
     }
 
     /**

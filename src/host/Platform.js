@@ -1,5 +1,8 @@
 const { isNotFoundError } = require('../shared/fsErrors.js');
 
+// Node's fs.constants.COPYFILE_EXCL; UXP accepts the same flag value but exposes no constants.
+const kCOPYFILE_EXCL = 1;
+
 /**
  * Adapter over UXP platform services: folder picker, file copy and existence checks,
  * and handing paths and URLs to the operating system.
@@ -27,14 +30,14 @@ class Platform {
     }
 
     /**
-     * Copies a file. The underlying copy overwrites an existing target, so callers must
-     * choose a free target name first.
+     * Copies a file exclusively: an existing target is never replaced.
      * @param {string} source - Absolute source path.
      * @param {string} target - Absolute target path.
      * @returns {Promise<void>}
+     * @throws {Error} With an "already exists" code (`-17` in UXP, `EEXIST` in Node) when the target exists.
      */
     async copyFile(source, target) {
-        await this.fs.copyFile(source, target);
+        await this.fs.copyFile(source, target, kCOPYFILE_EXCL);
     }
 
     /**

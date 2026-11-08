@@ -1,5 +1,8 @@
 const { baseName, joinPath, pathKey, uniqueTargetName } = require('./fileNames.js');
 const { defaultSessionName }                              = require('../sessions/session.js');
+const { isAlreadyExistsError }                            = require('../shared/fsErrors.js');
+
+const kMAX_COPY_ATTEMPTS = 100;
 
 /**
  * User-level use cases that coordinate the Session Catalog and Host Integration.
@@ -131,17 +134,41 @@ class SessionWorkflows {
                     result.missing.push(source);
                     continue;
                 }
-                const targetName = await uniqueTargetName(baseName(source), isTaken);
-                const target     = joinPath(folder, targetName);
-                reservedNames.add(this.nameKey(targetName));
-                await this.platform.copyFile(source, target);
-                result.copied.push({ source, target });
+                result.copied.push({ source, target : await this.copyToFreeName(source, folder, reservedNames, isTaken) });
             }
             catch (error) {
                 result.failed.push({ path : source, reason : error.message });
             }
         }
         return result;
+    }
+
+    /**
+     * Copies one file under the first free name. The copy itself is exclusive, so a target
+     * created by another process after the availability check is never replaced; the name
+     * is reserved and the next candidate is tried.
+     * @param {string} source - Absolute source path.
+     * @param {string} folder - Absolute target folder.
+     * @param {Set<string>} reservedNames - Names already used in this batch (mutated).
+     * @param {(candidate: string) => Promise<boolean>} isTaken
+     * @returns {Promise<string>} The absolute target path written.
+     */
+    async copyToFreeName(source, folder, reservedNames, isTaken) {
+        for (let attempt = 0; attempt < kMAX_COPY_ATTEMPTS; attempt++) {
+            const targetName = await uniqueTargetName(baseName(source), isTaken);
+            const target     = joinPath(folder, targetName);
+            reservedNames.add(this.nameKey(targetName));
+            try {
+                await this.platform.copyFile(source, target);
+                return target;
+            }
+            catch (error) {
+                if (!isAlreadyExistsError(error)) {
+                    throw error;
+                }
+            }
+        }
+        throw new Error(`Could not find a free file name for ${baseName(source)}.`);
     }
 
     /**

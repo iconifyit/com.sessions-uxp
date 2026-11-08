@@ -34,6 +34,16 @@ describe('Platform.fileExists', () => {
     });
 });
 
+describe('Platform.copyFile', () => {
+    test('copies exclusively so an existing target is never replaced', async () => {
+        // Scenario: UXP fs.copyFile with COPYFILE_EXCL (1) fails with code -17 when the target exists (verified in InDesign 21.6).
+        const fs       = { copyFile : jest.fn().mockResolvedValue(0) };
+        const platform = createPlatform({ fs });
+        await platform.copyFile(kPATH, '/Users/scott/Desktop/Delivery/catalog.indd');
+        expect(fs.copyFile).toHaveBeenCalledWith(kPATH, '/Users/scott/Desktop/Delivery/catalog.indd', 1);
+    });
+});
+
 describe('Platform.pickFolder', () => {
     test('returns the native path of the chosen folder', async () => {
         // Scenario: the user picks a delivery folder.

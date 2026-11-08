@@ -37,8 +37,9 @@ const fakePlatform = (existingPaths) => {
         copies     : [],
         fileExists : jest.fn(async (path) => existing.has(path)),
         copyFile   : jest.fn(async function copyFile(source, target) {
+            // Exclusive copy, like Platform.copyFile: an existing target is never replaced.
             if (existing.has(target)) {
-                throw new Error(`test guard: ${target} would be overwritten`);
+                throw Object.assign(new Error('file already exists'), { code : -17 });
             }
             existing.add(target);
             this.copies.push({ source, target });
@@ -211,6 +212,24 @@ describe('SessionWorkflows.copySessionDocuments / collectOpenDocuments', () => {
         const result = await workflows.copySessionDocuments(session.id, kDELIVERY);
 
         expect(result.copied.map((copy) => copy.target.normalize('NFC'))).toEqual([`${kDELIVERY}/caf\u00e9.indd`, `${kDELIVERY}/caf\u00e9 (2).indd`]);
+    });
+
+    test('a target created after the availability check is not overwritten; the next free name is used', async () => {
+        // Scenario: another InDesign instance writes catalog-2027.indd into the folder between the check and the copy.
+        const session = { id : '20261108-143205-k3f9', files : [kCATALOG] };
+        const { workflows, platform } = setup({ sessions : [session], existingPaths : [kCATALOG] });
+        const racedTarget = `${kDELIVERY}/catalog-2027.indd`;
+        const realCopy    = platform.copyFile.getMockImplementation();
+        platform.copyFile.mockImplementationOnce(async function racedCopy(source, target) {
+            await realCopy.call(this, kORDER, racedTarget);
+            return realCopy.call(this, source, target);
+        });
+
+        const result = await workflows.copySessionDocuments(session.id, kDELIVERY);
+
+        expect(result.copied).toEqual([{ source : kCATALOG, target : `${kDELIVERY}/catalog-2027 (2).indd` }]);
+        expect(platform.copies[0]).toEqual({ source : kORDER, target : racedTarget });
+        expect(result.failed).toEqual([]);
     });
 
     test('a copy failure is reported and the remaining files are still copied', async () => {
