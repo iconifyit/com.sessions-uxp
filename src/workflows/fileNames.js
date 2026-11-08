@@ -24,15 +24,16 @@ const joinPath = (folder, fileName) => {
 };
 
 /**
- * Normalizes a path into a comparison key: unifies separators, resolves `.` and `..`,
- * drops trailing separators, and lower-cases when the file system is case-insensitive.
+ * Normalizes a path into a comparison key: applies Unicode NFC (macOS reports native paths
+ * in decomposed form), unifies separators, resolves `.` and `..`, drops trailing
+ * separators, and lower-cases when the file system is case-insensitive.
  * @param {string} path - Absolute path.
  * @param {boolean} caseInsensitive - True on macOS and Windows default volumes.
  * @returns {string}
  */
 const pathKey = (path, caseInsensitive) => {
     const segments = [];
-    for (const segment of path.replace(/\\/g, '/').split('/')) {
+    for (const segment of path.normalize('NFC').replace(/\\/g, '/').split('/')) {
         if (segment === '' || segment === '.') {
             continue;
         }

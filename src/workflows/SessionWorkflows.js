@@ -141,12 +141,14 @@ class SessionWorkflows {
     }
 
     /**
-     * Comparison key for a file name within one folder.
+     * Comparison key for a file name within one folder (Unicode NFC, case-folded when the
+     * file system is case-insensitive).
      * @param {string} fileName
      * @returns {string}
      */
     nameKey(fileName) {
-        return this.caseInsensitivePaths ? fileName.toLowerCase() : fileName;
+        const composed = fileName.normalize('NFC');
+        return this.caseInsensitivePaths ? composed.toLowerCase() : composed;
     }
 }
 

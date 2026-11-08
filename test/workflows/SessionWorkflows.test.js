@@ -195,6 +195,18 @@ describe('SessionWorkflows.copySessionDocuments / collectOpenDocuments', () => {
         });
     });
 
+    test('same-named files differing only in Unicode composition are treated as a collision', async () => {
+        // Scenario: a composed "café.indd" and a decomposed "café.indd" from different folders copied in one batch.
+        const composed   = '/Users/scott/Dropbox/clients/a/caf\u00e9.indd';
+        const decomposed = '/Users/scott/Dropbox/clients/b/cafe\u0301.indd';
+        const session    = { id : '20261108-143205-k3f9', files : [composed, decomposed] };
+        const { workflows } = setup({ sessions : [session], existingPaths : [composed, decomposed] });
+
+        const result = await workflows.copySessionDocuments(session.id, kDELIVERY);
+
+        expect(result.copied.map((copy) => copy.target.normalize('NFC'))).toEqual([`${kDELIVERY}/caf\u00e9.indd`, `${kDELIVERY}/caf\u00e9 (2).indd`]);
+    });
+
     test('a copy failure is reported and the remaining files are still copied', async () => {
         // Scenario: the target volume rejects one file.
         const session = { id : '20261108-143205-k3f9', files : [kCATALOG, kORDER] };

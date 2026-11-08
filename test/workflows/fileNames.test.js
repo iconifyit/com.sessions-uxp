@@ -28,6 +28,7 @@ describe('pathKey', () => {
         ['a .. segment', '/Users/scott/Dropbox/archive/../catalog.indd', '/users/scott/dropbox/catalog.indd'],
         ['a . segment and doubled separators', '/Users/scott//Dropbox/./catalog.indd', '/users/scott/dropbox/catalog.indd'],
         ['Windows separators', 'C:\\Users\\scott\\catalog.indd', 'c:/users/scott/catalog.indd'],
+        ['Unicode composition (macOS reports decomposed names)', '/Users/scott/Dropbox/cafe\u0301/menu\u0308.indd', '/Users/scott/Dropbox/caf\u00e9/men\u00fc.indd'],
     ])('treats paths differing by %s as the same file', (_label, left, right) => {
         // Scenario: deciding whether a session document is already open.
         expect(pathKey(left, true)).toBe(pathKey(right, true));
