@@ -30,7 +30,7 @@ const describeSaveResult = ({ session, untitledCount }) => {
     }
     let text = `Saved "${session.name}" with ${countOf(session.files.length, 'document')}.`;
     if (untitledCount > 0) {
-        text += ` Skipped ${countOf(untitledCount, 'untitled document')}.`;
+        text += ` Skipped ${countOf(untitledCount, 'document')} not saved to disk yet.`;
     }
     return { tone : 'success', text };
 };
@@ -71,7 +71,7 @@ const describeCopyResult = ({ copied, missing, failed, untitledCount = 0, modifi
         parts.push(`${countOf(modifiedCount, 'document')} with unsaved changes copied as last saved.`);
     }
     if (untitledCount > 0) {
-        parts.push(`Skipped ${countOf(untitledCount, 'untitled document')}.`);
+        parts.push(`Skipped ${countOf(untitledCount, 'document')} not saved to disk yet.`);
     }
     if (missing.length > 0) {
         parts.push(`Missing: ${missing.map(displayName).join(', ')}.`);

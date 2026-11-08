@@ -15,6 +15,7 @@ const kSUITE_DIR     = path.dirname(fileURLToPath(import.meta.url));
 const kINDESIGN_APP  = process.env.INDESIGN_APP || 'Adobe InDesign 2026';
 const kTIMEOUT_MS    = 5 * 60 * 1000;
 const kPOLL_MS       = 1000;
+const kOSASCRIPT_TIMEOUT_MS = 60 * 1000;
 const kCONFIG_PATH   = path.join(kSUITE_DIR, 'config.generated.js');
 
 /**
@@ -24,7 +25,7 @@ const kCONFIG_PATH   = path.join(kSUITE_DIR, 'config.generated.js');
  */
 const runExtendScript = (scriptPath) => execFileSync('osascript', [
     '-e', `tell application "${kINDESIGN_APP}" to do script POSIX file "${scriptPath}" language javascript`,
-], { encoding : 'utf-8' }).trim();
+], { encoding : 'utf-8', timeout : kOSASCRIPT_TIMEOUT_MS }).trim();
 
 /**
  * Waits until the UXP script reports completion, or the timeout elapses.
@@ -94,8 +95,14 @@ const main = async () => {
         result = await waitForResult(resultPath);
     }
     finally {
-        console.log(closeSuiteDocuments(workDirectory, result ? result.untitledNames : []));
         fs.rmSync(kCONFIG_PATH, { force : true });
+        try {
+            console.log(closeSuiteDocuments(workDirectory, result ? result.untitledNames : []));
+        }
+        catch (error) {
+            // Reported without masking the original failure; leftover documents are named in the work folder.
+            console.error(`Cleanup could not close suite documents: ${error.message}`);
+        }
     }
 
     if (result === null) {

@@ -60,6 +60,9 @@ const step = async (name, action) => {
  */
 const createSavedDocument = async (path) => {
     const document = app.documents.add();
+    // Recorded before saving so cleanup can close it by name even if the save fails.
+    result.untitledNames.push(document.name);
+    writeResult();
     await document.save(await localFileSystem.createEntryWithUrl(`file:${path}`, { overwrite : true }));
     return document;
 };
@@ -91,13 +94,14 @@ const run = async () => {
         opened.prices  = await createSavedDocument(paths.prices);
         const untitled = app.documents.add();
         result.untitledNames.push(untitled.name);
+        result.untitledDocument = untitled.name;
         writeResult();
     });
 
     let session;
     await step('listOpenDocuments', async () => {
         const openDocuments = await documents.listOpenDocuments();
-        const untitled      = openDocuments.find((document) => document.name === result.untitledNames[0]);
+        const untitled      = openDocuments.find((document) => document.name === result.untitledDocument);
         check('listOpenDocuments returns native paths with spaces, #, %, and é', isOpen(paths.catalog, openDocuments) && isOpen(paths.order, openDocuments), openDocuments);
         check('listOpenDocuments reports the untitled document with a null path', untitled && untitled.path === null, untitled);
     });

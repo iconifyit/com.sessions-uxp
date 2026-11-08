@@ -16,7 +16,7 @@ describe('describeSaveResult', () => {
         // Scenario: two documents saved, one untitled skipped.
         expect(describeSaveResult({ session : { name : 'Spring catalog', files : [kCATALOG, kORDER] }, untitledCount : 1 })).toEqual({
             tone : 'success',
-            text : 'Saved "Spring catalog" with 2 documents. Skipped 1 untitled document.',
+            text : 'Saved "Spring catalog" with 2 documents. Skipped 1 document not saved to disk yet.',
         });
     });
 
@@ -60,7 +60,7 @@ describe('describeCopyResult', () => {
             modifiedCount : 1,
         })).toEqual({
             tone : 'warning',
-            text : 'Copied 1 document. 1 document with unsaved changes copied as last saved. Skipped 1 untitled document. Missing: price list #2.indd.',
+            text : 'Copied 1 document. 1 document with unsaved changes copied as last saved. Skipped 1 document not saved to disk yet. Missing: price list #2.indd.',
         });
     });
 

@@ -147,7 +147,7 @@ class SessionsPanel {
         for (const session of this.sessions) {
             const row = this.doc.createElement('div');
             row.className  = session.id === this.selectedId ? 'session-row is-selected' : 'session-row';
-            row.dataset.id = session.id;
+            row.setAttribute('data-id', session.id);
             row.title      = session.description || session.name;
             const name = this.doc.createElement('div');
             name.className   = 'session-name';
@@ -159,8 +159,8 @@ class SessionsPanel {
             row.appendChild(meta);
             list.appendChild(row);
         }
-        empty.classList.toggle('is-hidden', this.sessions.length > 0);
-        list.classList.toggle('is-hidden', this.sessions.length === 0);
+        setClass(empty, 'is-hidden', this.sessions.length > 0);
+        setClass(list, 'is-hidden', this.sessions.length === 0);
         this.updateButtons();
     }
 
@@ -170,13 +170,13 @@ class SessionsPanel {
      * @returns {boolean} True when a row was selected.
      */
     selectRow(target) {
-        const row = target && target.closest ? target.closest('.session-row') : null;
+        const row = findRow(target, this.elements.list);
         if (!row) {
             return false;
         }
-        this.selectedId = row.dataset.id;
+        this.selectedId = row.getAttribute('data-id');
         for (const candidate of this.elements.list.querySelectorAll('.session-row')) {
-            candidate.classList.toggle('is-selected', candidate.dataset.id === this.selectedId);
+            setClass(candidate, 'is-selected', candidate.getAttribute('data-id') === this.selectedId);
         }
         this.updateButtons();
         return true;
@@ -240,7 +240,7 @@ class SessionsPanel {
         }
         const notes = [`${savablePaths.length} document(s) will be saved.`];
         if (untitledCount > 0) {
-            notes.push(`${untitledCount} untitled document(s) will be skipped.`);
+            notes.push(`${untitledCount} document(s) not saved to disk yet will be skipped.`);
         }
         if (modifiedCount > 0) {
             notes.push('Unsaved changes are not part of a session; only file locations are saved.');
@@ -389,6 +389,39 @@ class SessionsPanel {
         await this.platform.openPath(this.store.directory);
     }
 }
+
+/**
+ * Finds the session row that contains a node, stopping at the list. Walks parents
+ * explicitly rather than relying on `Element.closest` in the UXP DOM.
+ * @param {Node} node - Event target.
+ * @param {HTMLElement} list - The session list element.
+ * @returns {HTMLElement|null}
+ */
+const findRow = (node, list) => {
+    let current = node;
+    while (current && current !== list) {
+        if (current.classList && current.classList.contains('session-row')) {
+            return current;
+        }
+        current = current.parentNode;
+    }
+    return null;
+};
+
+/**
+ * Adds or removes a class.
+ * @param {HTMLElement} node
+ * @param {string} className
+ * @param {boolean} enabled
+ * @returns {void}
+ */
+const setClass = (node, className, enabled) => {
+    if (enabled) {
+        node.classList.add(className);
+        return;
+    }
+    node.classList.remove(className);
+};
 
 /**
  * Sets or clears the disabled attribute on a Spectrum widget.
