@@ -1,0 +1,89 @@
+# ADR-001 Implementation Plan: InDesign UXP Sessions Plugin
+
+Governing design: [ADR-001 v0.0.1](../ADR-001-indesign-uxp-sessions-plugin/ADR-001-indesign-uxp-sessions-plugin-0.0.1.md)
+
+**Scope contract:** This work delivers the InDesign UXP Sessions plugin described in ADR-001, and nothing else.
+
+## Delivery
+
+Two pull requests against `develop`, each from its own `claude/` branch, each reviewed by Archie then Koala before the PR is opened, and Tess after convergence.
+
+1. **ADR PR** — this ADR and plan. Merged after the user approves the design; the ADR status changes to Accepted in that PR.
+2. **Implementation PR** — the plugin, tests, tooling, README, and `VERSION`.
+
+## Repository layout
+
+```text
+com.sessions-uxp/
+  VERSION                     # 0.1.0, kept in sync with package.json and manifest.json
+  package.json                # dev tooling only (jest, eslint); no runtime dependencies
+  eslint.config.js
+  jest.config.js
+  manifest.json
+  index.html
+  icons/                      # panel icons (light/dark, 1x/2x)
+  src/
+    main.js                   # entrypoints.setup, composition root
+    sessions/
+      session.js              # createSession, parseSession, sortNewestFirst, id/name generation
+      SessionStore.js         # list/get/create/update/remove over injected fs + directory
+      storageLocation.js      # resolves <appData>/com.atomic/com.atomic.indesign-sessions/sessions
+    host/
+      InDesignDocuments.js    # listOpenDocuments, openDocument
+      Platform.js             # pickFolder, copyFile, fileExists, openPath, openExternal
+    workflows/
+      SessionWorkflows.js     # inspect/save/open/copy/collect use cases
+      fileNames.js            # uniqueTargetName
+    ui/
+      panel.js                # list rendering, selection, action bar, flyout handlers, messages
+      dialogs.js              # <dialog>-based text-input and confirm dialogs
+      styles.css              # prefers-color-scheme themed styles
+  test/
+    __mocks__/indesign.js     # minimal app.documents / app.open fake
+    __mocks__/uxp.js          # localFileSystem / shell fakes
+    support/nodeFs.js         # Node fs/promises restricted to the ADR-001 §3 fs subset
+    sessions/*.test.js
+    workflows/*.test.js
+    host/*.test.js
+    manifest.test.js
+    host-verification/        # in-host suite: UXP scripts run inside InDesign by run.mjs
+  docs/
+    adrs/...
+  README.md
+```
+
+## Implementation order (commit checklist)
+
+- [ ] `chore:` tooling — `package.json` (jest, eslint, scripts `test`, `lint`), `VERSION` 0.1.0, Jest `moduleNameMapper` for `indesign` and `uxp`, ESLint flat config.
+- [ ] `feat:` Session Catalog — `session.js`, `storageLocation.js`, `SessionStore.js` with tests. Tests inject `test/support/nodeFs.js`, which wraps Node `fs/promises` and exposes only the `fs` subset listed in ADR-001 §3, against a per-test temp directory.
+- [ ] `feat:` Host Integration — `InDesignDocuments.js`, `Platform.js` with tests against the mocks.
+- [ ] `feat:` Session Workflows — `SessionWorkflows.js`, `fileNames.js` with tests using in-memory fakes of the catalog and host.
+- [ ] `feat:` Panel UI and manifest — `manifest.json`, `index.html`, `src/ui/*`, `src/main.js`, icons; manifest test.
+- [ ] `test:` in-host verification suite (`npm run test:host`) and a recorded passing run.
+- [ ] `docs:` README (install via UXP Developer Tool, usage, storage location, permissions, how to run both test suites).
+
+## Testing strategy
+
+Automated (Jest, Node 22, frozen clock at a fixed ISO timestamp, realistic Dropbox-style paths with spaces and Unicode):
+
+- **Session Catalog:** round-trip create → get → list; newest-first ordering after a rename; quotes, newlines, and Unicode in name/description survive; invalid JSON and wrong-shape files are excluded and reported, never modified; an existing `<id>.json` stays byte-identical when the fs fake's `writeFile` throws, and separately when `rename` throws, during `update`, and `list()` ignores the leftover `.tmp`; identity: a file whose inner `id` differs from its filename (mismatched or duplicated copy) is reported invalid and never written or deleted, and `filePathFor` rejects traversal ids such as `../../Documents/notes`; `createdAt` that is not an ISO date and relative or empty `files` entries make a file invalid; `update` cannot change `id`/`createdAt`; `remove` of a missing id fails clearly; storage path per platform.
+- **Host Integration:** `listOpenDocuments` returns path for saved documents and marks untitled/unresolvable ones; awaits `fullName` and reads `nativePath`; treats a throwing `fullName` as untitled; `openDocument` passes the raw native path to `app.open` and propagates open errors.
+- **Session Workflows:** save excludes untitled documents and reports the count; save with zero savable documents creates nothing; open reports opened / already open / missing / failed and continues after a failure; copy and collect never overwrite and apply `name (2).ext` suffixes, including two same-basename sources from different folders in one batch; collect skips untitled documents and reports the count; already-open matching treats paths that differ only by letter case, a trailing separator, or a `..` segment as the same file; `uniqueTargetName` boundaries (no extension, dotted names, existing `(2)`).
+- **Manifest:** `host.app` is `ID`, `minVersion` is `20.0.0`, required permissions present, versions match `VERSION` and `package.json`, the panel id matches the id registered in `main.js`.
+- `npm run lint` clean.
+
+In-host (`npm run test:host`, macOS): `test/host-verification/run.mjs` uses `osascript` to have InDesign run UXP scripts that load the plugin's real `src/` modules and exercise them against test documents the suite creates in a temporary folder. The suite closes only the documents it created, identified by their path inside that folder, never a document it did not open. Every in-host script catches its own errors and reports them in its result file, so no InDesign error dialog is raised. It verifies:
+
+1. `listOpenDocuments` returns native paths for saved documents and counts untitled ones.
+2. `openDocument` opens paths with spaces, `#`, `%`, and non-ASCII characters.
+3. Save → close → open round trip through `SessionWorkflows` against a real sessions folder in the temp directory: opened, already-open, missing, and failed counts are correct.
+4. Copy and Collect produce `name (2).ext` on collision and never overwrite.
+5. `SessionStore` create, update (rename over an existing file), and remove against the UXP `fs` module.
+
+The panel itself is loaded in InDesign through the UXP Developer Tool and checked for loading without errors and for rendering in the current theme. Consent prompts from `shell.openPath`/`openExternal` and Windows are not covered by automated runs; Windows uses the same code paths with the `%APPDATA%` storage root.
+
+"Done" for the implementation PR means the Jest suite, lint, and the in-host suite pass, the panel loads in InDesign, and Archie and Koala have signed off. The PR is merged only after the in-host suite passes.
+
+## Versioning
+
+`VERSION`, `package.json` `version`, and `manifest.json` `version` start at `0.1.0` and move together (repo-versioning rule).

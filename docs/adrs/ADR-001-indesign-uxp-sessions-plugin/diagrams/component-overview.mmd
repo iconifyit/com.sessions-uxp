@@ -1,0 +1,23 @@
+%%{init: {'theme':'base','themeVariables':{
+'fontFamily':'system-ui, sans-serif',
+'primaryColor':'#e3cff3','primaryBorderColor':'#730FC3','primaryTextColor':'#293845',
+'lineColor':'#788896','clusterBkg':'#ffffff','clusterBorder':'#788896','edgeLabelBackground':'#ffffff'
+}}}%%
+flowchart LR
+  ui[Panel UI<br/>panel.js · dialogs.js · main.js]
+  wf[Session Workflows<br/>SessionWorkflows]
+  cat[Session Catalog<br/>session.js · SessionStore]
+  host[Host Integration<br/>InDesignDocuments · Platform]
+  store[(sessions/*.json)]
+  idsn([InDesign document model])
+  uxp([UXP fs · shell · pickers])
+  ui --> wf
+  ui -->|list / update / remove / directory / filePathFor| cat
+  ui -->|pickFolder / openPath / openExternal| host
+  wf --> cat
+  wf --> host
+  cat -->|fs| store
+  host --> idsn
+  host --> uxp
+  classDef house fill:#e3cff3,stroke:#730FC3,stroke-width:2px,color:#293845;
+  class ui,wf,cat,host,store,idsn,uxp house;
