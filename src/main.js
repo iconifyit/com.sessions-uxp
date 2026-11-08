@@ -12,7 +12,7 @@ const { SessionStore }            = require('./sessions/SessionStore.js');
 const { InDesignDocuments }       = require('./host/InDesignDocuments.js');
 const { Platform }                = require('./host/Platform.js');
 const { SessionWorkflows }        = require('./workflows/SessionWorkflows.js');
-const { MenuCommand, SessionsPanel } = require('./ui/panel.js');
+const { SessionsPanel, kFLYOUT_MENU_ITEMS } = require('./ui/panel.js');
 const dialogs                     = require('./ui/dialogs.js');
 
 const kPANEL_ID          = 'sessionsPanel';
@@ -36,12 +36,7 @@ uxp.entrypoints.setup({
             show() {
                 return panel.run(() => panel.refresh());
             },
-            menuItems : [
-                { id : MenuCommand.COLLECT, label : 'Collect Open Documents…' },
-                { id : MenuCommand.SHOW_FOLDER, label : 'Show Sessions Folder' },
-                '-',
-                { id : MenuCommand.DOCUMENTATION, label : 'Documentation' },
-            ],
+            menuItems : kFLYOUT_MENU_ITEMS,
             invokeMenu(commandId) {
                 return panel.handleMenu(commandId);
             },
