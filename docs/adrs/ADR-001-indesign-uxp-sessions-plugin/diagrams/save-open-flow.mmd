@@ -1,0 +1,26 @@
+%%{init: {'theme':'base','themeVariables':{
+'fontFamily':'system-ui, sans-serif',
+'primaryColor':'#e3cff3','primaryBorderColor':'#730FC3','primaryTextColor':'#293845',
+'lineColor':'#788896','clusterBkg':'#ffffff','clusterBorder':'#788896','edgeLabelBackground':'#ffffff'
+}}}%%
+flowchart LR
+  subgraph Save
+    s1([Save clicked]) --> s2[inspectOpenDocuments]
+    s2 --> s3{any saved docs?}
+    s3 -->|no| s4[/message: nothing to save/]
+    s3 -->|yes| s5[Save dialog:<br/>name + description]
+    s5 --> s6[saveOpenDocuments]
+    s6 --> s7[/message: saved N, skipped M untitled/]
+  end
+  subgraph Open
+    o1([Open / double-click]) --> o2[openSession: SessionStore.get]
+    o2 --> o3[for each path]
+    o3 --> o4{already open?}
+    o4 -->|yes| o3
+    o4 -->|no| o5{exists?}
+    o5 -->|no| o3
+    o5 -->|yes| o6[openDocument]
+    o6 -->|ok or error| o3
+    o3 -->|done| o7[/summary: opened, already open, missing, failed/]
+  end
+  classDef house fill:#e3cff3,stroke:#730FC3,stroke-width:2px,color:#293845;
