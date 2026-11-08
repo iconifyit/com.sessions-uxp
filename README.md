@@ -76,6 +76,7 @@ Source layout:
 | `src/sessions/` | Session Catalog: session record, storage location, `SessionStore` |
 | `src/host/` | Host Integration: InDesign documents and UXP platform services |
 | `src/workflows/` | Session Workflows: save, open, copy, collect |
+| `src/shared/` | Dependency-free helpers used by more than one component (file-system error classification) |
 | `src/ui/`, `index.html`, `src/main.js` | Panel UI and composition root |
 
 The version in `VERSION`, `package.json`, and `manifest.json` is kept in sync.
