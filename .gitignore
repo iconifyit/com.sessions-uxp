@@ -137,3 +137,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# In-host verification run configuration (generated per run)
+test/host-verification/config.generated.js

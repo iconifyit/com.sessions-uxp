@@ -1,0 +1,23 @@
+{
+  "name": "com.sessions-uxp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Adobe InDesign UXP panel that saves the open documents as a named work session and reopens them later.",
+  "license": "MIT",
+  "author": "Scott Lewis <scott@atomiclotus.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/iconifyit/com.sessions-uxp.git"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "jest",
+    "test:host": "node test/host-verification/run.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "jest": "^30.5.2"
+  }
+}
