@@ -85,6 +85,15 @@ describe('SessionStore', () => {
         expect(await store.get(created.id)).toEqual(updated);
     });
 
+    test('update treats a non-string description as empty, matching creation', async () => {
+        // Scenario: a caller passes null when the description field is cleared.
+        const { store } = createStore();
+        const created   = await store.create({ name : 'Spring catalog', description : 'Layout pass', files : kFILES });
+
+        expect((await store.update(created.id, { description : null })).description).toBe('');
+        expect((await store.get(created.id)).description).toBe('');
+    });
+
     test('update rejects an empty name and leaves the stored file unchanged', async () => {
         // Scenario: the user clears the name in the Rename dialog.
         const { store } = createStore();

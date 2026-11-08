@@ -154,7 +154,7 @@ class SessionStore {
             updated.name = normalizeName(changes.name);
         }
         if (changes.description !== undefined) {
-            updated.description = String(changes.description).trim();
+            updated.description = typeof changes.description === 'string' ? changes.description.trim() : '';
         }
         await this.writeAtomically(updated);
         return updated;
