@@ -5,15 +5,48 @@ const {
     describeSaveResult,
     describeSessionMeta,
 } = require('./messages.js');
+const { ContextMenu } = require('./contextMenu.js');
 
 /**
- * Flyout menu command ids (ADR-001 §5).
+ * Menu command ids shared by the right-click menu and the flyout menu (ADR-001 §5).
  */
 const MenuCommand = Object.freeze({
-    COLLECT       : 'collectOpenDocuments',
-    DOCUMENTATION : 'documentation',
-    SHOW_FOLDER   : 'showSessionsFolder',
+    COLLECT            : 'collectOpenDocuments',
+    COPY_SESSION_FILES : 'copySessionFiles',
+    DELETE_SESSION     : 'deleteSession',
+    DESCRIBE_SESSION   : 'describeSession',
+    DOCUMENTATION      : 'documentation',
+    OPEN_SESSION       : 'openSession',
+    RENAME_SESSION     : 'renameSession',
+    SHOW_FOLDER        : 'showSessionsFolder',
+    SHOW_SESSION_FILE  : 'showSessionFile',
 });
+
+/**
+ * Actions on the selected session, in menu order. `label` is used in the right-click menu,
+ * `flyoutLabel` in the panel flyout menu.
+ */
+const kSESSION_MENU = Object.freeze([
+    { id : MenuCommand.OPEN_SESSION, label : 'Open', flyoutLabel : 'Open Session' },
+    { id : MenuCommand.RENAME_SESSION, label : 'Rename…', flyoutLabel : 'Rename Session…' },
+    { id : MenuCommand.DESCRIBE_SESSION, label : 'Describe…', flyoutLabel : 'Describe Session…' },
+    { id : MenuCommand.COPY_SESSION_FILES, label : 'Copy Files…', flyoutLabel : 'Copy Session Files…' },
+    { id : MenuCommand.SHOW_SESSION_FILE, label : 'Show File', flyoutLabel : 'Show Session File' },
+    { divider : true },
+    { id : MenuCommand.DELETE_SESSION, label : 'Delete…', flyoutLabel : 'Delete Session…' },
+]);
+
+/**
+ * Flyout menu items for `entrypoints.setup`: the session actions, then panel-level commands.
+ */
+const kFLYOUT_MENU_ITEMS = Object.freeze([
+    ...kSESSION_MENU.map((item) => (item.divider ? '-' : { id : item.id, label : item.flyoutLabel })),
+    '-',
+    { id : MenuCommand.COLLECT, label : 'Collect Open Documents…' },
+    { id : MenuCommand.SHOW_FOLDER, label : 'Show Sessions Folder' },
+    '-',
+    { id : MenuCommand.DOCUMENTATION, label : 'Documentation' },
+]);
 
 const kDATE_FORMAT = new Intl.DateTimeFormat(undefined, { dateStyle : 'medium', timeStyle : 'short' });
 
@@ -47,12 +80,21 @@ class SessionsPanel {
             message : doc.getElementById('message'),
             save    : doc.getElementById('save-button'),
             open    : doc.getElementById('open-button'),
-            rename  : doc.getElementById('rename-button'),
-            edit    : doc.getElementById('describe-button'),
-            copy    : doc.getElementById('copy-button'),
-            show    : doc.getElementById('show-file-button'),
-            remove  : doc.getElementById('delete-button'),
         };
+        this.sessionCommands = {
+            [MenuCommand.OPEN_SESSION]       : () => this.openSelected(),
+            [MenuCommand.RENAME_SESSION]     : () => this.renameSelected(),
+            [MenuCommand.DESCRIBE_SESSION]   : () => this.describeSelected(),
+            [MenuCommand.COPY_SESSION_FILES] : () => this.copySelected(),
+            [MenuCommand.SHOW_SESSION_FILE]  : () => this.showSelectedFile(),
+            [MenuCommand.DELETE_SESSION]     : () => this.deleteSelected(),
+        };
+        this.contextMenu = new ContextMenu({
+            doc,
+            container : doc.body,
+            items     : kSESSION_MENU,
+            onSelect  : (commandId) => this.handleMenu(commandId),
+        });
         this.bindEvents();
     }
 
@@ -64,25 +106,74 @@ class SessionsPanel {
         const { elements } = this;
         elements.save.addEventListener('click', () => this.run(() => this.saveSession()));
         elements.open.addEventListener('click', () => this.run(() => this.openSelected()));
-        elements.rename.addEventListener('click', () => this.run(() => this.renameSelected()));
-        elements.edit.addEventListener('click', () => this.run(() => this.describeSelected()));
-        elements.copy.addEventListener('click', () => this.run(() => this.copySelected()));
-        elements.show.addEventListener('click', () => this.run(() => this.showSelectedFile()));
-        elements.remove.addEventListener('click', () => this.run(() => this.deleteSelected()));
         elements.list.addEventListener('click', (event) => this.selectRow(event.target));
         elements.list.addEventListener('dblclick', (event) => {
             if (this.selectRow(event.target)) {
                 this.run(() => this.openSelected());
             }
         });
+        // Right-click opens the session menu. Both the pointer event and the contextmenu
+        // event are handled because the host decides which of them a panel receives;
+        // opening the menu twice at the same point is harmless.
+        this.doc.addEventListener('pointerdown', (event) => this.handlePointerDown(event));
+        this.doc.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            this.openContextMenu(event);
+        });
+        this.doc.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.contextMenu.hide();
+            }
+        });
     }
 
     /**
-     * Handles a flyout menu command.
+     * Opens the session menu on a secondary-button press over a session; any other press
+     * outside the menu closes it.
+     * @param {PointerEvent} event
+     * @returns {void}
+     */
+    handlePointerDown(event) {
+        if (this.contextMenu.contains(event.target)) {
+            return;
+        }
+        if (event.button === 2) {
+            this.openContextMenu(event);
+            return;
+        }
+        this.contextMenu.hide();
+    }
+
+    /**
+     * Selects the session under the pointer and shows the session menu there; outside a
+     * session row the menu is closed.
+     * @param {MouseEvent} event
+     * @returns {void}
+     */
+    openContextMenu(event) {
+        if (this.busy || !this.selectRow(event.target)) {
+            this.contextMenu.hide();
+            return;
+        }
+        this.contextMenu.show({ x : event.clientX, y : event.clientY });
+    }
+
+    /**
+     * Handles a command from the flyout menu or the right-click menu.
      * @param {string} commandId
      * @returns {Promise<void>}
      */
     handleMenu(commandId) {
+        const sessionCommand = this.sessionCommands[commandId];
+        if (sessionCommand) {
+            return this.run(async () => {
+                if (!this.selectedSession()) {
+                    this.showMessage({ tone : 'warning', text : 'Select a session first.' });
+                    return;
+                }
+                await sessionCommand();
+            });
+        }
         if (commandId === MenuCommand.COLLECT) {
             return this.run(() => this.collectOpenDocuments());
         }
@@ -188,10 +279,7 @@ class SessionsPanel {
      */
     updateButtons() {
         const { elements } = this;
-        const needsSelection = [elements.open, elements.rename, elements.edit, elements.copy, elements.show, elements.remove];
-        for (const button of needsSelection) {
-            setDisabled(button, this.busy || this.selectedId === null);
-        }
+        setDisabled(elements.open, this.busy || this.selectedId === null);
         setDisabled(elements.save, this.busy);
     }
 
@@ -438,6 +526,6 @@ const setDisabled = (widget, disabled) => {
 };
 
 module.exports = {
-    MenuCommand,
     SessionsPanel,
+    kFLYOUT_MENU_ITEMS,
 };

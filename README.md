@@ -19,13 +19,15 @@ The design is recorded in [ADR-001](docs/adrs/ADR-001-indesign-uxp-sessions-plug
 | Action | Where | What it does |
 | --- | --- | --- |
 | Save Session | Button | Saves the open documents that exist on disk under a name (defaults to the current date and time) and optional description. Untitled documents are skipped; unsaved changes are not part of a session. |
-| Open | Button, or double-click a session | Opens the session's documents. Documents already open are left as they are; missing or unopenable documents are skipped and listed in the panel message. |
-| Rename… / Describe… | Action bar | Edit the session's name or description. Hover a session to see its description. |
-| Copy Files… | Action bar | Copies the session's documents into a folder you choose. Existing files are never overwritten; collisions become `name (2).indd`. Linked assets and fonts are not copied (use **File → Package** for a complete hand-off). |
-| Show File | Action bar | Opens the session's JSON file in the default app. |
-| Delete… | Action bar | Deletes the session after confirmation. The documents are not affected. |
+| Open | Button, double-click a session, or Session menu | Opens the session's documents. Documents already open are left as they are; missing or unopenable documents are skipped and listed in the panel message. |
+| Rename… / Describe… | Session menu | Edit the session's name or description. Hover a session to see its description. |
+| Copy Files… | Session menu | Copies the session's documents into a folder you choose. Existing files are never overwritten; collisions become `name (2).indd`. Linked assets and fonts are not copied (use **File → Package** for a complete hand-off). |
+| Show File | Session menu | Opens the session's JSON file in the default app. |
+| Delete… | Session menu | Deletes the session after confirmation. The documents are not affected. |
 | Collect Open Documents… | Panel menu | Copies the open documents into a folder you choose, with the same rules as Copy Files. |
 | Show Sessions Folder | Panel menu | Opens the folder that holds the session files. |
+
+**Session menu:** right-click a session to open it, or choose the same actions from the panel menu (☰), where they apply to the selected session.
 
 InDesign asks for permission the first time the panel opens a folder, a file, or the documentation link.
 
@@ -77,7 +79,7 @@ Source layout:
 | `src/host/` | Host Integration: InDesign documents and UXP platform services |
 | `src/workflows/` | Session Workflows: save, open, copy, collect |
 | `src/shared/` | Dependency-free helpers used by more than one component (file-system error classification) |
-| `src/ui/`, `index.html`, `src/main.js` | Panel UI and composition root |
+| `src/ui/`, `index.html`, `src/main.js` | Panel UI (list, dialogs, right-click menu) and composition root |
 
 The version in `VERSION`, `package.json`, and `manifest.json` is kept in sync.
 

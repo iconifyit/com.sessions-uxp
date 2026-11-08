@@ -9,6 +9,7 @@
     --row-hover      : #3e3e3e;
     --row-selected   : #2c4e7a;
     --border         : #4a4a4a;
+    --menu           : #3a3a3a;
     --success        : #6dc59b;
     --warning        : #e8a93a;
     --error          : #f27b6b;
@@ -19,6 +20,7 @@
         --surface      : #1e1e1e;
         --row-hover    : #2b2b2b;
         --border       : #3a3a3a;
+        --menu         : #2b2b2b;
     }
 }
 
@@ -30,6 +32,7 @@
         --row-hover      : #e6e6e6;
         --row-selected   : #c9ddf6;
         --border         : #cfcfcf;
+        --menu           : #ffffff;
         --success        : #12805c;
         --warning        : #9a5b00;
         --error          : #c9252d;
@@ -37,6 +40,7 @@
 }
 
 body {
+    position   : relative;
     margin     : 0;
     color      : var(--text);
     font-size  : 12px;
@@ -114,10 +118,31 @@ body {
     color       : var(--text-secondary);
 }
 
-.actions {
-    display     : flex;
-    flex-wrap   : wrap;
-    margin-top  : 6px;
+.context-menu {
+    position      : absolute;
+    z-index       : 10;
+    min-width     : 160px;
+    padding       : 4px 0;
+    border        : 1px solid var(--border);
+    border-radius : 4px;
+    background    : var(--menu);
+}
+
+.context-menu-item {
+    padding : 4px 14px;
+    cursor  : default;
+}
+
+.context-menu-item:hover,
+.context-menu-item:focus {
+    outline    : none;
+    background : var(--row-selected);
+}
+
+.context-menu-divider {
+    height     : 1px;
+    margin     : 4px 0;
+    background : var(--border);
 }
 
 .is-hidden {
