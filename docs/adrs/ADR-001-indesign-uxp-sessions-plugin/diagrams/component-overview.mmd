@@ -12,7 +12,7 @@ flowchart LR
   idsn([InDesign document model])
   uxp([UXP fs · shell · pickers])
   ui --> wf
-  ui -->|list / rename / describe / delete / paths| cat
+  ui -->|list / update / remove / directory / filePathFor| cat
   ui -->|pickFolder / openPath / openExternal| host
   wf --> cat
   wf --> host
