@@ -526,8 +526,6 @@ const setDisabled = (widget, disabled) => {
 };
 
 module.exports = {
-    MenuCommand,
     SessionsPanel,
     kFLYOUT_MENU_ITEMS,
-    kSESSION_MENU,
 };

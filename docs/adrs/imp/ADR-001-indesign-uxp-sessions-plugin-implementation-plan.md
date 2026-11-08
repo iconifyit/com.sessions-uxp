@@ -37,7 +37,8 @@ com.sessions-uxp/
       SessionWorkflows.js     # inspect/save/open/copy/collect use cases
       fileNames.js            # uniqueTargetName
     ui/
-      panel.js                # list rendering, selection, action bar, flyout handlers
+      panel.js                # list rendering, selection, session and flyout menu commands
+      contextMenu.js          # right-click session menu (ADR-001 v0.0.3)
       dialogs.js              # <dialog>-based text-input and confirm dialogs
       messages.js             # result-message formatting (pure, unit-tested)
       styles.css              # prefers-color-scheme themed styles
@@ -48,6 +49,7 @@ com.sessions-uxp/
     workflows/*.test.js
     host/*.test.js            # UXP services stubbed per test; collaborators are injected, so no module mapping
     ui/messages.test.js
+    ui/contextMenu.test.js
     manifest.test.js
     host-verification/
       run.mjs                 # drives InDesign via osascript, waits for results, closes suite documents
