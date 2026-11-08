@@ -183,7 +183,9 @@ const run = async () => {
         const kept = await fs.readFile(target, { encoding : 'utf-8' });
         check('Platform.copyFile refuses to replace an existing file', copyError !== null && kept === 'kept', { code : copyError && copyError.code, kept });
 
-        const stuck = new SessionStore({ fs, directory : `${kWORK}/sessions-collide`, separator : '/', random : () => 0.5 });
+        // Fixed clock and randomness so every attempt produces the same id.
+        const fixedNow = new Date();
+        const stuck    = new SessionStore({ fs, directory : `${kWORK}/sessions-collide`, separator : '/', now : () => fixedNow, random : () => 0.5 });
         const original = await stuck.create({ name : 'First', files : [paths.catalog] });
         let createError = null;
         try {

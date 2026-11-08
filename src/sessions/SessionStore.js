@@ -122,16 +122,20 @@ class SessionStore {
         const now = this.now();
         await this.ensureDirectory();
         for (let attempt = 0; attempt < kMAX_ID_ATTEMPTS; attempt++) {
-            const session = createSession({ id : generateId(now, this.random), name, description, files, now });
+            const session  = createSession({ id : generateId(now, this.random), name, description, files, now });
+            const filePath = this.filePathFor(session.id);
             try {
                 // Exclusive create: a session that already uses this id is never replaced.
-                await this.fs.writeFile(this.filePathFor(session.id), serializeSession(session), { encoding : 'utf-8', flag : 'wx' });
+                await this.fs.writeFile(filePath, serializeSession(session), { encoding : 'utf-8', flag : 'wx' });
                 return session;
             }
             catch (error) {
-                if (!isAlreadyExistsError(error)) {
-                    throw error;
+                if (isAlreadyExistsError(error)) {
+                    continue;
                 }
+                // The exclusive flag means any file now at this path is this attempt's partial write.
+                await this.fs.unlink(filePath).catch(() => {});
+                throw error;
             }
         }
         throw new Error(`Could not choose a unique session id after ${kMAX_ID_ATTEMPTS} attempts.`);

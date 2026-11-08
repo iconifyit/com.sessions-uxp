@@ -145,6 +145,18 @@ describe('SessionStore', () => {
         expect((await store.list()).sessions.map((s) => s.name).sort()).toEqual(['Morning layout', 'Second save in the same second']);
     });
 
+    test('a create that fails partway leaves no unreadable session file behind', async () => {
+        // Scenario: the disk fills up while a new session file is being written.
+        const fullDiskFs = { ...createNodeFs(), writeFile : async (filePath, data, options) => {
+            await fsPromises.writeFile(filePath, data.slice(0, 10), options);
+            throw Object.assign(new Error('no space left on device'), { code : 'ENOSPC' });
+        } };
+        const { store } = createStore({ fs : fullDiskFs });
+
+        await expect(store.create({ name : 'Spring catalog', files : kFILES })).rejects.toThrow('no space left on device');
+        expect(await createStore().store.list()).toEqual({ sessions : [], invalidFiles : [] });
+    });
+
     test('create gives up after repeated id collisions without replacing anything', async () => {
         // Scenario: a broken random source always yields the same id.
         const { store } = createStore({ random : () => 0.5 });
