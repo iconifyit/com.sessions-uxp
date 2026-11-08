@@ -1,6 +1,10 @@
+# [DEPRECATED]
+
+Superseded by [ADR-001 v0.0.2](ADR-001-indesign-uxp-sessions-plugin-0.0.2.md).
+
 # ADR-001: InDesign UXP Sessions Plugin
 
-**Status**: Accepted
+**Status**: Superseded by 0.0.2
 **Date**: 2026-11-08
 **Deciders**: Scott Lewis
 **Version**: 0.0.1

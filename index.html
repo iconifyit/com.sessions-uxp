@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="src/ui/styles.css">
+    </head>
+    <body>
+        <div class="panel">
+            <div class="toolbar">
+                <sp-button id="save-button" variant="cta" size="s">Save Session</sp-button>
+                <sp-button id="open-button" variant="primary" size="s" disabled>Open</sp-button>
+            </div>
+            <div id="message" class="message is-hidden"></div>
+            <div id="session-list" class="session-list is-hidden"></div>
+            <div id="empty-state" class="empty-state">
+                <sp-body size="S">No saved sessions yet. Open the documents you are working on and choose Save Session.</sp-body>
+            </div>
+            <div class="actions">
+                <sp-action-button id="rename-button" size="s" quiet disabled>Rename…</sp-action-button>
+                <sp-action-button id="describe-button" size="s" quiet disabled>Describe…</sp-action-button>
+                <sp-action-button id="copy-button" size="s" quiet disabled>Copy Files…</sp-action-button>
+                <sp-action-button id="show-file-button" size="s" quiet disabled>Show File</sp-action-button>
+                <sp-action-button id="delete-button" size="s" quiet disabled>Delete…</sp-action-button>
+            </div>
+        </div>
+        <script>
+            // Loaded through require so modules resolve relative to their own folders.
+            require('./src/main.js');
+        </script>
+    </body>
+</html>

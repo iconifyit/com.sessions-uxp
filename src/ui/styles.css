@@ -1,0 +1,153 @@
+/*
+ * Theme tokens. InDesign leaves the --uxp-host-* variables empty, so the panel follows
+ * the host theme through prefers-color-scheme (darkest, dark, light, lightest).
+ */
+:root {
+    --text           : #e3e3e3;
+    --text-secondary : #a8a8a8;
+    --surface        : #323232;
+    --row-hover      : #3e3e3e;
+    --row-selected   : #2c4e7a;
+    --border         : #4a4a4a;
+    --success        : #6dc59b;
+    --warning        : #e8a93a;
+    --error          : #f27b6b;
+}
+
+@media (prefers-color-scheme: darkest) {
+    :root {
+        --surface      : #1e1e1e;
+        --row-hover    : #2b2b2b;
+        --border       : #3a3a3a;
+    }
+}
+
+@media (prefers-color-scheme: light), (prefers-color-scheme: lightest) {
+    :root {
+        --text           : #222222;
+        --text-secondary : #5e5e5e;
+        --surface        : #f5f5f5;
+        --row-hover      : #e6e6e6;
+        --row-selected   : #c9ddf6;
+        --border         : #cfcfcf;
+        --success        : #12805c;
+        --warning        : #9a5b00;
+        --error          : #c9252d;
+    }
+}
+
+body {
+    margin     : 0;
+    color      : var(--text);
+    font-size  : 12px;
+}
+
+.panel {
+    display        : flex;
+    flex-direction : column;
+    height         : 100vh;
+    padding        : 8px;
+    box-sizing     : border-box;
+}
+
+.toolbar {
+    display         : flex;
+    justify-content : space-between;
+    margin-bottom   : 8px;
+}
+
+.message {
+    margin-bottom : 8px;
+    line-height   : 1.4;
+}
+
+.message-success {
+    color : var(--success);
+}
+
+.message-warning {
+    color : var(--warning);
+}
+
+.message-error {
+    color : var(--error);
+}
+
+.session-list {
+    flex          : 1;
+    overflow-y    : auto;
+    border        : 1px solid var(--border);
+    border-radius : 4px;
+    background    : var(--surface);
+}
+
+.session-row {
+    padding       : 6px 8px;
+    border-bottom : 1px solid var(--border);
+    cursor        : default;
+}
+
+.session-row:hover {
+    background : var(--row-hover);
+}
+
+.session-row.is-selected {
+    background : var(--row-selected);
+}
+
+.session-name {
+    font-weight   : bold;
+    overflow      : hidden;
+    text-overflow : ellipsis;
+    white-space   : nowrap;
+}
+
+.session-meta {
+    margin-top : 2px;
+    color      : var(--text-secondary);
+    font-size  : 11px;
+}
+
+.empty-state {
+    flex        : 1;
+    padding     : 16px 4px;
+    color       : var(--text-secondary);
+}
+
+.actions {
+    display     : flex;
+    flex-wrap   : wrap;
+    margin-top  : 6px;
+}
+
+.is-hidden {
+    display : none;
+}
+
+.sessions-dialog {
+    width : 320px;
+}
+
+.dialog-body {
+    display        : flex;
+    flex-direction : column;
+    margin         : 12px 0;
+}
+
+.dialog-field {
+    width         : 100%;
+    margin-bottom : 8px;
+}
+
+.dialog-note {
+    color : var(--text-secondary);
+}
+
+.dialog-buttons {
+    display         : flex;
+    justify-content : flex-end;
+}
+
+.dialog-buttons sp-button {
+    margin-left : 8px;
+}
