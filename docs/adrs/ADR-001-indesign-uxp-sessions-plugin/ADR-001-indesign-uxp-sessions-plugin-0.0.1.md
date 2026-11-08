@@ -1,6 +1,6 @@
 # ADR-001: InDesign UXP Sessions Plugin
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-11-08
 **Deciders**: Scott Lewis
 **Version**: 0.0.1
@@ -25,12 +25,12 @@ Known defects in the CEP implementation that the new design must not reproduce: 
 
 ### Platform facts that constrain the design
 
-Verified against Adobe's InDesign UXP documentation (developer.adobe.com/indesign/uxp) unless marked otherwise.
+Verified against Adobe's InDesign UXP documentation (developer.adobe.com/indesign/uxp); items marked (in-host) were confirmed by running UXP scripts in InDesign 21.6 (UXP 9.3.0) on macOS.
 
 - UXP plugins require InDesign 18.5+. Panel flyout menus (`entrypoints.setup({ panels: { <id>: { menuItems, invokeMenu } } })`) require InDesign 20.0+ (UXP 8.0.1).
-- `app.documents` is a collection (`length`, `item(i)`). `Document` exposes `name`, `saved`, `modified`, `converted`, `fullName`. `fullName` is only meaningful for documents saved at least once; sources disagree on whether it is returned directly or as a Promise, and it is a file object (`nativePath`/`fsPath`), not a string.
-- `app.open(from)` takes a File. The community-confirmed pattern converts a path to an Entry first with `localFileSystem.getEntryWithUrl(fileUrl)`. The host adapter builds `fileUrl` by splitting the native path on the platform separator, percent-encoding each segment with `encodeURIComponent` (leaving a Windows drive letter such as `C:` unencoded), and joining with `/` behind `file://` (macOS `file:///Users/...`, Windows `file:///C:/Users/...`), so `#`, `%`, spaces, and non-ASCII characters in file names are not misread as URL syntax.
-- Reading and writing arbitrary absolute paths requires the manifest permission `localFileSystem: "fullAccess"`. `require("fs")` supports absolute paths and `copyFile`. `require("os").homedir()` returns the user's home directory.
+- `app.documents` is a collection (`length`, `item(i)`). `Document` exposes `name`, `saved`, `modified`, `converted`, `fullName`. (in-host) `fullName` returns a Promise that resolves to a file entry whose `nativePath` is the absolute native path; for a never-saved document, reading it throws "Unsaved documents have no full name."
+- (in-host) `app.open(path)` is synchronous, returns the `Document`, and accepts the raw native path string, including names with spaces, `#`, `%`, and non-ASCII characters. Opening a document that is already open returns the existing document without opening a second window. UXP encodes `file:` URLs itself, so callers must not percent-encode paths.
+- Reading and writing arbitrary absolute paths requires the manifest permission `localFileSystem: "fullAccess"`. `require("fs")` supports absolute paths. (in-host) `fs.mkdir(path, { recursive: true })` fails with code `-17` when the folder already exists; missing files fail with code `-2`; `fs.rename` replaces an existing target; `fs.copyFile` silently overwrites an existing target; `fs` has no `appendFileSync`. `require("os").homedir()` returns the user's home directory.
 - `localFileSystem.getDataFolder()` resolves to `~/Library/Application Support/Adobe/UXP/PluginsStorage/IDSN/<InDesign version>/<External|Developer>/<plugin id>`; data in it is tied to the InDesign version and differs between developer-loaded and installed builds.
 - `alert`/`prompt`/`confirm` are beta in UXP 7.4+ and need a feature flag; the supported way to collect input is the HTML `<dialog>` element with `showModal()`. Folder pickers are available via `localFileSystem.getFolder()`.
 - No `contextmenu` event is documented for UXP panels.
@@ -81,14 +81,14 @@ One file per session, named `<id>.json`, written with `JSON.stringify` (2-space 
 - The filename stem is the authority for identity. `id` must match `^\d{8}-\d{6}-[a-z0-9]{4}$` and equal the filename stem; `filePathFor(id)` rejects any id that fails the format check, so no store operation can address a path outside the sessions folder. A duplicated or hand-renamed file whose inner `id` does not match its filename is invalid.
 - Reading validates the shape: `schemaVersion` known; `id` as above; `name` a non-empty string; `createdAt` (and `updatedAt`, when present) a string that parses as an ISO 8601 date; `description` a string when present; `files` an array of non-empty absolute paths. Invalid or unreadable files are excluded from the list and reported once in the panel's message area; they are never modified or deleted automatically.
 - Writes go to `<id>.json.tmp` and are then renamed over `<id>.json`, so an interrupted write cannot leave a truncated session. Listing reads only `*.json`, so a leftover `.tmp` is ignored, and the next write of the same id overwrites it.
-- `SessionStore` depends on this subset of the UXP `fs` module, injected so tests can supply a Node-backed fake with the same subset: `mkdir(path, { recursive: true })`, `readdir(path)`, `readFile(path, { encoding: "utf-8" })`, `writeFile(path, data, { encoding: "utf-8" })`, `rename(from, to)` (replacing an existing target), `unlink(path)`. No other `fs` call is used by the catalog.
+- `SessionStore` depends on this subset of the UXP `fs` module, injected so tests can supply a Node-backed fake with the same subset: `mkdir(path, { recursive: true })` (an "already exists" failure is treated as success), `readdir(path)`, `readFile(path, { encoding: "utf-8" })`, `writeFile(path, data, { encoding: "utf-8" })`, `rename(from, to)` (replacing an existing target), `unlink(path)`. No other `fs` call is used by the catalog.
 
 ### 4. Components
 
 | Component | Responsibility | Public contract | Implementation artifacts |
 | --- | --- | --- | --- |
 | Session Catalog | Own the session record and its persistence: create, validate, serialize, list, read, update, delete. | `SessionStore` with `directory` (absolute sessions folder), `filePathFor(id)`, `list()` → `{ sessions, invalidFiles }`, `get(id)`, `create({ name, description, files })`, `update(id, changes)`, `remove(id)`; `Session` helpers `createSession`, `parseSession`, `sortNewestFirst`. | `src/sessions/session.js` (pure), `src/sessions/SessionStore.js` (uses an injected `fs`-compatible module and directory path), `src/sessions/storageLocation.js` |
-| Host Integration | Isolate every call into InDesign and UXP platform services. | `InDesignDocuments` with `listOpenDocuments()` → `{ path, name, saved }[]` and `openDocument(path)`; `Platform` with `pickFolder()`, `copyFile(src, dest)`, `fileExists(path)`, `openPath(path)`, `openExternal(url)`. | `src/host/InDesignDocuments.js`, `src/host/Platform.js` |
+| Host Integration | Isolate every call into InDesign and UXP platform services. | `InDesignDocuments` with `listOpenDocuments()` → `{ path, name, saved }[]` and `openDocument(path)`; `Platform` with `pickFolder()`, `copyFile(src, dest)` (callers choose a free target name first, because the underlying copy overwrites), `fileExists(path)` (via `fs.lstat`), `openPath(path)`, `openExternal(url)`. | `src/host/InDesignDocuments.js`, `src/host/Platform.js` |
 | Session Workflows | Implement the user-level use cases by coordinating the catalog and host, and return result summaries the UI can display. | `SessionWorkflows` with `inspectOpenDocuments()` → `{ savablePaths, untitledCount }`, `saveOpenDocuments({ name, description })`, `openSession(id)`, `copySessionDocuments(id, folder)`, `collectOpenDocuments(folder)`; pure helper `uniqueTargetName(fileName, isTaken)`. | `src/workflows/SessionWorkflows.js`, `src/workflows/fileNames.js` |
 | Panel UI | Render the session list and dialogs, map user gestures and flyout commands to workflows, collect user choices (folder picks, confirmations), and show results. | `index.html` panel and `entrypoints.setup` registration; no contract consumed by other components. | `index.html`, `src/ui/panel.js`, `src/ui/dialogs.js`, `src/ui/styles.css`, `src/main.js` |
 
@@ -134,7 +134,7 @@ UXP has no right-click menu, so the CEP context-menu actions become an action ba
 | No documents open on Save | No dialog; message "There are no open documents to save." |
 | Untitled (never-saved) documents | Excluded; the result message states how many were skipped. If every open document is untitled, nothing is saved and the message says so. |
 | Documents with unsaved changes | The on-disk path is saved; the dialog notes that unsaved changes are not part of a session. |
-| Converted documents (opened from an older InDesign version, not yet saved in the new format) | Treated like untitled documents when InDesign reports no file for them; otherwise saved by path. Confirmed in the manual verification checklist. |
+| Converted documents (opened from an older InDesign version, not yet saved in the new format) | Treated like untitled documents when reading `fullName` fails; otherwise saved by path. |
 | A session file already open in InDesign | Skipped and counted as "already open" (paths compared after `path.normalize`-style cleanup of `.`/`..`/trailing separators, case-insensitively on macOS and Windows whose default volumes are case-insensitive). |
 | A file that no longer exists | Skipped and counted as "missing"; listed by name in the summary. |
 | A file that exists but fails to open | Error caught; counted as "failed"; remaining files still open. |
@@ -164,7 +164,7 @@ UXP has no right-click menu, so the CEP context-menu actions become an action ba
 
 - `fullAccess` and `launchProcess` permissions are broad; InDesign shows the user a consent prompt for each `openPath`/`openExternal` call.
 - InDesign 18.5–19.x users cannot install the plugin.
-- Host behavior (what `fullName` returns, `app.open` with an Entry, already-open detection, dialogs during open) cannot be exercised by automated tests and is covered by the manual verification checklist in the implementation plan.
+- Host behavior cannot be exercised by the Jest suite; it is covered by a separate in-host verification suite that drives InDesign and is run before merge (see the implementation plan).
 
 ### Neutral
 

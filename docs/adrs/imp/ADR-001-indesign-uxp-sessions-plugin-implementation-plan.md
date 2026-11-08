@@ -46,9 +46,9 @@ com.sessions-uxp/
     workflows/*.test.js
     host/*.test.js
     manifest.test.js
+    host-verification/        # in-host suite: UXP scripts run inside InDesign by run.mjs
   docs/
     adrs/...
-    MANUAL-VERIFICATION.md    # in-host checklist (see below)
   README.md
 ```
 
@@ -59,31 +59,30 @@ com.sessions-uxp/
 - [ ] `feat:` Host Integration — `InDesignDocuments.js`, `Platform.js` with tests against the mocks.
 - [ ] `feat:` Session Workflows — `SessionWorkflows.js`, `fileNames.js` with tests using in-memory fakes of the catalog and host.
 - [ ] `feat:` Panel UI and manifest — `manifest.json`, `index.html`, `src/ui/*`, `src/main.js`, icons; manifest test.
-- [ ] `docs:` README (install via UXP Developer Tool, usage, storage location, permissions) and `docs/MANUAL-VERIFICATION.md`.
+- [ ] `test:` in-host verification suite (`npm run test:host`) and a recorded passing run.
+- [ ] `docs:` README (install via UXP Developer Tool, usage, storage location, permissions, how to run both test suites).
 
 ## Testing strategy
 
 Automated (Jest, Node 22, frozen clock at a fixed ISO timestamp, realistic Dropbox-style paths with spaces and Unicode):
 
 - **Session Catalog:** round-trip create → get → list; newest-first ordering after a rename; quotes, newlines, and Unicode in name/description survive; invalid JSON and wrong-shape files are excluded and reported, never modified; an existing `<id>.json` stays byte-identical when the fs fake's `writeFile` throws, and separately when `rename` throws, during `update`, and `list()` ignores the leftover `.tmp`; identity: a file whose inner `id` differs from its filename (mismatched or duplicated copy) is reported invalid and never written or deleted, and `filePathFor` rejects traversal ids such as `../../Documents/notes`; `createdAt` that is not an ISO date and relative or empty `files` entries make a file invalid; `update` cannot change `id`/`createdAt`; `remove` of a missing id fails clearly; storage path per platform.
-- **Host Integration:** `listOpenDocuments` returns path for saved documents and marks untitled/unresolvable ones; handles `fullName` returned directly or as a Promise and exposing `nativePath` or `fsPath`; `openDocument` converts the path to a per-segment percent-encoded `file:` URL (macOS paths with spaces, `#`, `%`, and non-ASCII; one Windows drive-letter path) and an Entry, and propagates open errors.
+- **Host Integration:** `listOpenDocuments` returns path for saved documents and marks untitled/unresolvable ones; awaits `fullName` and reads `nativePath`; treats a throwing `fullName` as untitled; `openDocument` passes the raw native path to `app.open` and propagates open errors.
 - **Session Workflows:** save excludes untitled documents and reports the count; save with zero savable documents creates nothing; open reports opened / already open / missing / failed and continues after a failure; copy and collect never overwrite and apply `name (2).ext` suffixes, including two same-basename sources from different folders in one batch; collect skips untitled documents and reports the count; already-open matching treats paths that differ only by letter case, a trailing separator, or a `..` segment as the same file; `uniqueTargetName` boundaries (no extension, dotted names, existing `(2)`).
 - **Manifest:** `host.app` is `ID`, `minVersion` is `20.0.0`, required permissions present, versions match `VERSION` and `package.json`, the panel id matches the id registered in `main.js`.
 - `npm run lint` clean.
 
-Manual (`docs/MANUAL-VERIFICATION.md`, run by the user in InDesign through the UXP Developer Tool, because host behavior cannot be exercised outside InDesign):
+In-host (`npm run test:host`, macOS): `test/host-verification/run.mjs` uses `osascript` to have InDesign run UXP scripts that load the plugin's real `src/` modules and exercise them against test documents the suite creates in a temporary folder. The suite closes only the documents it created, identified by their path inside that folder, never a document it did not open. Every in-host script catches its own errors and reports them in its result file, so no InDesign error dialog is raised. It verifies:
 
-1. What `Document.fullName` returns for saved, untitled, and converted documents.
-2. `app.open` with an Entry from `getEntryWithUrl`, for paths containing spaces, `#`, `%`, and non-ASCII characters.
-3. Already-open documents are skipped rather than reopened.
-4. Missing-font / missing-link dialogs appear and opening continues afterward.
-5. `shell.openPath` on the sessions folder and a session `.json` (consent prompt, `launchProcess.extensions` format).
-6. UXP `fs.rename` replaces an existing `<id>.json` (exercised by Rename and Describe on an existing session).
-7. Theme follows InDesign light/dark.
-8. Smoke test: open three documents (one untitled) → Save → close all → Open → three-minus-one reopen, summary correct; Rename, Describe, Copy Files (with a name collision), Collect, Delete.
-9. Windows (when a Windows machine is available): sessions folder resolves under `%APPDATA%`, and the smoke test passes.
+1. `listOpenDocuments` returns native paths for saved documents and counts untitled ones.
+2. `openDocument` opens paths with spaces, `#`, `%`, and non-ASCII characters.
+3. Save → close → open round trip through `SessionWorkflows` against a real sessions folder in the temp directory: opened, already-open, missing, and failed counts are correct.
+4. Copy and Collect produce `name (2).ext` on collision and never overwrite.
+5. `SessionStore` create, update (rename over an existing file), and remove against the UXP `fs` module.
 
-"Done" for the implementation PR means the automated suite and lint pass, Archie and Koala have signed off, and the manual checklist exists. The PR is then merged; in-host results are reported by the user, and any defect found is fixed in a follow-up PR. Host behavior in items 1–2 (document paths and opening) is the main residual risk of merging before an in-host run.
+The panel itself is loaded in InDesign through the UXP Developer Tool and checked for loading without errors and for rendering in the current theme. Consent prompts from `shell.openPath`/`openExternal` and Windows are not covered by automated runs; Windows uses the same code paths with the `%APPDATA%` storage root.
+
+"Done" for the implementation PR means the Jest suite, lint, and the in-host suite pass, the panel loads in InDesign, and Archie and Koala have signed off. The PR is merged only after the in-host suite passes.
 
 ## Versioning
 

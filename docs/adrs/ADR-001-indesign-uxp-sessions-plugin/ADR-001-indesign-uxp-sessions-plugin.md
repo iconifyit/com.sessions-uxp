@@ -6,4 +6,4 @@ Implementation plan: [ADR-001-indesign-uxp-sessions-plugin-implementation-plan.m
 
 | Version | Status | Date |
 | --- | --- | --- |
-| [0.0.1](ADR-001-indesign-uxp-sessions-plugin-0.0.1.md) | Proposed | 2026-11-08 |
+| [0.0.1](ADR-001-indesign-uxp-sessions-plugin-0.0.1.md) | Accepted | 2026-11-08 |
