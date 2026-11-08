@@ -29,7 +29,7 @@ Verified against Adobe's InDesign UXP documentation (developer.adobe.com/indesig
 
 - UXP plugins require InDesign 18.5+. Panel flyout menus (`entrypoints.setup({ panels: { <id>: { menuItems, invokeMenu } } })`) require InDesign 20.0+ (UXP 8.0.1).
 - `app.documents` is a collection (`length`, `item(i)`). `Document` exposes `name`, `saved`, `modified`, `converted`, `fullName`. `fullName` is only meaningful for documents saved at least once; sources disagree on whether it is returned directly or as a Promise, and it is a file object (`nativePath`/`fsPath`), not a string.
-- `app.open(from)` takes a File. The community-confirmed pattern converts a path to an Entry first with `localFileSystem.getEntryWithUrl("file:" + path)`.
+- `app.open(from)` takes a File. The community-confirmed pattern converts a path to an Entry first with `localFileSystem.getEntryWithUrl(fileUrl)`. The host adapter builds `fileUrl` as `file:` followed by the path with each segment percent-encoded (`encodeURIComponent`), so `#`, `%`, spaces, and non-ASCII characters in file names are not misread as URL syntax.
 - Reading and writing arbitrary absolute paths requires the manifest permission `localFileSystem: "fullAccess"`. `require("fs")` supports absolute paths and `copyFile`. `require("os").homedir()` returns the user's home directory.
 - `localFileSystem.getDataFolder()` resolves to `~/Library/Application Support/Adobe/UXP/PluginsStorage/IDSN/<InDesign version>/<External|Developer>/<plugin id>`; data in it is tied to the InDesign version and differs between developer-loaded and installed builds.
 - `alert`/`prompt`/`confirm` are beta in UXP 7.4+ and need a feature flag; the supported way to collect input is the HTML `<dialog>` element with `showModal()`. Folder pickers are available via `localFileSystem.getFolder()`.
@@ -78,7 +78,8 @@ One file per session, named `<id>.json`, written with `JSON.stringify` (2-space 
 - `name` defaults to the local creation date and time and is user-editable. `description` is optional and shown as the row tooltip.
 - `files` are native absolute paths in the order InDesign lists the documents.
 - The list is sorted newest-first by `createdAt`, independent of `name`.
-- Reading validates the shape (`schemaVersion` known, `id`/`name`/`createdAt` strings, `files` an array of strings). Invalid or unreadable files are excluded from the list and reported once in the panel's message area; they are never modified or deleted automatically.
+- The filename stem is the authority for identity. `id` must match `^\d{8}-\d{6}-[a-z0-9]{4}$` and equal the filename stem; `filePathFor(id)` rejects any id that fails the format check, so no store operation can address a path outside the sessions folder. A duplicated or hand-renamed file whose inner `id` does not match its filename is invalid.
+- Reading validates the shape: `schemaVersion` known; `id` as above; `name` a non-empty string; `createdAt` (and `updatedAt`, when present) a string that parses as an ISO 8601 date; `description` a string when present; `files` an array of non-empty absolute paths. Invalid or unreadable files are excluded from the list and reported once in the panel's message area; they are never modified or deleted automatically.
 - Writes go to `<id>.json.tmp` and are then renamed over `<id>.json`, so an interrupted write cannot leave a truncated session. Listing reads only `*.json`, so a leftover `.tmp` is ignored, and the next write of the same id overwrites it.
 - `SessionStore` depends on this subset of the UXP `fs` module, injected so tests can supply a Node-backed fake with the same subset: `mkdir(path, { recursive: true })`, `readdir(path)`, `readFile(path, { encoding: "utf-8" })`, `writeFile(path, data, { encoding: "utf-8" })`, `rename(from, to)` (replacing an existing target), `unlink(path)`. No other `fs` call is used by the catalog.
 
@@ -116,7 +117,7 @@ UXP has no right-click menu, so the CEP context-menu actions become an action ba
 | Rename Session | Adapt | Action bar "Rename…" edits `name` only; the file is not renamed. |
 | Add Description | Port | Action bar "Describe…" edits `description`. |
 | Delete Session with confirm | Port | Action bar "Delete…" shows a confirm dialog, then removes the JSON file. |
-| Collect Open Files | Port | Flyout "Collect Open Documents…". Same copy rules and same post-copy "show folder" prompt as Copy Files (CEP opened the folder unconditionally; the prompt avoids an unasked-for consent dialog). |
+| Collect Open Files | Port | Flyout "Collect Open Documents…". Untitled documents are skipped and counted, and documents with unsaved changes are copied in their last-saved state, as stated in the result message (same rules as Save). Same copy rules and same post-copy "show folder" prompt as Copy Files (CEP opened the folder unconditionally; the prompt avoids an unasked-for consent dialog). |
 | Documentation link | Port | Flyout "Documentation" opens the repository README URL with `shell.openExternal`. |
 | — (new) | Add | Flyout "Show Sessions Folder" opens the storage folder; this replaces the need for a log file to locate data. |
 | Open Log File | Drop | UXP plugins log to the UXP Developer Tool console; there is no file logger to open. |
@@ -138,7 +139,7 @@ UXP has no right-click menu, so the CEP context-menu actions become an action ba
 | A file that no longer exists | Skipped and counted as "missing"; listed by name in the summary. |
 | A file that exists but fails to open | Error caught; counted as "failed"; remaining files still open. |
 | Missing-font / missing-link dialogs during open | InDesign's interaction level is not changed, matching CEP: the user sees and resolves those dialogs. |
-| Copy / Collect name collision in the target folder | The copy is written as `name (2).ext`, `name (3).ext`, …; existing files are never overwritten. This replaces CEP's inconsistent behavior (overwrite in Copy Session Docs, suffix in Collect). |
+| Copy / Collect name collision in the target folder | The copy is written as `name (2).ext`, `name (3).ext`, …; existing files are never overwritten, including files copied earlier in the same batch (two sources with the same basename from different folders). This replaces CEP's inconsistent behavior (overwrite in Copy Session Docs, suffix in Collect). |
 | Copy of `.indd` files | Copies the document files only; linked assets and fonts are not included. InDesign's Package command remains the tool for complete hand-off. |
 | Folder picker cancelled | No action, no message. |
 | Invalid or unreadable session JSON in the folder | Skipped from the list, reported once; never modified. |

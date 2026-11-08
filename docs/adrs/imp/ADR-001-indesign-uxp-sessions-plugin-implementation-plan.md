@@ -65,16 +65,16 @@ com.sessions-uxp/
 
 Automated (Jest, Node 22, frozen clock at a fixed ISO timestamp, realistic Dropbox-style paths with spaces and Unicode):
 
-- **Session Catalog:** round-trip create → get → list; newest-first ordering after a rename; quotes, newlines, and Unicode in name/description survive; invalid JSON and wrong-shape files are excluded and reported, never modified; atomic write leaves no `.tmp` on success; `update` cannot change `id`/`createdAt`; `remove` of a missing id fails clearly; storage path per platform.
-- **Host Integration:** `listOpenDocuments` returns path for saved documents and marks untitled/unresolvable ones; handles `fullName` returned directly or as a Promise and exposing `nativePath` or `fsPath`; `openDocument` converts the path to an Entry and propagates open errors.
-- **Session Workflows:** save excludes untitled documents and reports the count; save with zero savable documents creates nothing; open reports opened / already open / missing / failed and continues after a failure; copy and collect never overwrite and apply `name (2).ext` suffixes; `uniqueTargetName` boundaries (no extension, dotted names, existing `(2)`).
+- **Session Catalog:** round-trip create → get → list; newest-first ordering after a rename; quotes, newlines, and Unicode in name/description survive; invalid JSON and wrong-shape files are excluded and reported, never modified; an existing `<id>.json` stays byte-identical when the fs fake's `writeFile` throws, and separately when `rename` throws, during `update`, and `list()` ignores the leftover `.tmp`; identity: a file whose inner `id` differs from its filename (mismatched or duplicated copy) is reported invalid and never written or deleted, and `filePathFor` rejects traversal ids such as `../../Documents/notes`; `createdAt` that is not an ISO date and relative or empty `files` entries make a file invalid; `update` cannot change `id`/`createdAt`; `remove` of a missing id fails clearly; storage path per platform.
+- **Host Integration:** `listOpenDocuments` returns path for saved documents and marks untitled/unresolvable ones; handles `fullName` returned directly or as a Promise and exposing `nativePath` or `fsPath`; `openDocument` converts the path to a per-segment percent-encoded `file:` URL (paths with spaces, `#`, `%`, and non-ASCII) and an Entry, and propagates open errors.
+- **Session Workflows:** save excludes untitled documents and reports the count; save with zero savable documents creates nothing; open reports opened / already open / missing / failed and continues after a failure; copy and collect never overwrite and apply `name (2).ext` suffixes, including two same-basename sources from different folders in one batch; collect skips untitled documents and reports the count; already-open matching treats paths that differ only by letter case, a trailing separator, or a `..` segment as the same file; `uniqueTargetName` boundaries (no extension, dotted names, existing `(2)`).
 - **Manifest:** `host.app` is `ID`, `minVersion` is `20.0.0`, required permissions present, versions match `VERSION` and `package.json`, the panel id matches the id registered in `main.js`.
 - `npm run lint` clean.
 
 Manual (`docs/MANUAL-VERIFICATION.md`, run by the user in InDesign through the UXP Developer Tool, because host behavior cannot be exercised outside InDesign):
 
 1. What `Document.fullName` returns for saved, untitled, and converted documents.
-2. `app.open` with an Entry from `getEntryWithUrl`.
+2. `app.open` with an Entry from `getEntryWithUrl`, for paths containing spaces, `#`, `%`, and non-ASCII characters.
 3. Already-open documents are skipped rather than reopened.
 4. Missing-font / missing-link dialogs appear and opening continues afterward.
 5. `shell.openPath` on the sessions folder and a session `.json` (consent prompt, `launchProcess.extensions` format).
