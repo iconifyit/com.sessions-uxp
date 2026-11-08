@@ -74,28 +74,29 @@ One file per session, named `<id>.json`, written with `JSON.stringify` (2-space 
 }
 ```
 
-- `id` is immutable and derived from the creation time plus a short random suffix; it is the filename. Renaming a session changes `name` only, so no filename sanitization or file renames are needed and rename cannot collide.
+- `id` is immutable and derived from the UTC creation time (`YYYYMMDD-HHMMSS`) plus a four-character random suffix; it is the filename. Renaming a session changes `name` only, so no filename sanitization or file renames are needed and rename cannot collide.
 - `name` defaults to the local creation date and time and is user-editable. `description` is optional and shown as the row tooltip.
 - `files` are native absolute paths in the order InDesign lists the documents.
 - The list is sorted newest-first by `createdAt`, independent of `name`.
 - Reading validates the shape (`schemaVersion` known, `id`/`name`/`createdAt` strings, `files` an array of strings). Invalid or unreadable files are excluded from the list and reported once in the panel's message area; they are never modified or deleted automatically.
-- Writes go to `<id>.json.tmp` and are then renamed over `<id>.json`, so an interrupted write cannot leave a truncated session.
+- Writes go to `<id>.json.tmp` and are then renamed over `<id>.json`, so an interrupted write cannot leave a truncated session. Listing reads only `*.json`, so a leftover `.tmp` is ignored, and the next write of the same id overwrites it.
+- `SessionStore` depends on this subset of the UXP `fs` module, injected so tests can supply a Node-backed fake with the same subset: `mkdir(path, { recursive: true })`, `readdir(path)`, `readFile(path, { encoding: "utf-8" })`, `writeFile(path, data, { encoding: "utf-8" })`, `rename(from, to)` (replacing an existing target), `unlink(path)`. No other `fs` call is used by the catalog.
 
 ### 4. Components
 
 | Component | Responsibility | Public contract | Implementation artifacts |
 | --- | --- | --- | --- |
-| Session Catalog | Own the session record and its persistence: create, validate, serialize, list, read, update, delete. | `SessionStore` with `list()`, `get(id)`, `create({ name, description, files })`, `update(id, changes)`, `remove(id)`; `Session` helpers `createSession`, `parseSession`, `sortNewestFirst`. | `src/sessions/session.js` (pure), `src/sessions/SessionStore.js` (uses an injected `fs`-compatible module and directory path), `src/sessions/storageLocation.js` |
+| Session Catalog | Own the session record and its persistence: create, validate, serialize, list, read, update, delete. | `SessionStore` with `directory` (absolute sessions folder), `filePathFor(id)`, `list()` → `{ sessions, invalidFiles }`, `get(id)`, `create({ name, description, files })`, `update(id, changes)`, `remove(id)`; `Session` helpers `createSession`, `parseSession`, `sortNewestFirst`. | `src/sessions/session.js` (pure), `src/sessions/SessionStore.js` (uses an injected `fs`-compatible module and directory path), `src/sessions/storageLocation.js` |
 | Host Integration | Isolate every call into InDesign and UXP platform services. | `InDesignDocuments` with `listOpenDocuments()` → `{ path, name, saved }[]` and `openDocument(path)`; `Platform` with `pickFolder()`, `copyFile(src, dest)`, `fileExists(path)`, `openPath(path)`, `openExternal(url)`. | `src/host/InDesignDocuments.js`, `src/host/Platform.js` |
 | Session Workflows | Implement the user-level use cases by coordinating the catalog and host, and return result summaries the UI can display. | `SessionWorkflows` with `inspectOpenDocuments()` → `{ savablePaths, untitledCount }`, `saveOpenDocuments({ name, description })`, `openSession(id)`, `copySessionDocuments(id, folder)`, `collectOpenDocuments(folder)`; pure helper `uniqueTargetName(fileName, isTaken)`. | `src/workflows/SessionWorkflows.js`, `src/workflows/fileNames.js` |
-| Panel UI | Render the session list and dialogs, map user gestures and flyout commands to workflows, show results. | `index.html` panel and `entrypoints.setup` registration; no contract consumed by other components. | `index.html`, `src/ui/panel.js`, `src/ui/dialogs.js`, `src/ui/styles.css`, `src/main.js` |
+| Panel UI | Render the session list and dialogs, map user gestures and flyout commands to workflows, collect user choices (folder picks, confirmations), and show results. | `index.html` panel and `entrypoints.setup` registration; no contract consumed by other components. | `index.html`, `src/ui/panel.js`, `src/ui/dialogs.js`, `src/ui/styles.css`, `src/main.js` |
 
-Dependency direction: Panel UI → Session Workflows → (Session Catalog, Host Integration). The Session Catalog and Session Workflows do not import `indesign` or `uxp`; their collaborators are injected, which is what makes them testable outside InDesign.
+Dependency direction: Panel UI → Session Workflows → (Session Catalog, Host Integration). The Panel UI also calls two components directly, limited to these operations: `SessionStore` for `list`, `update` (rename, describe), `remove`, `directory`, and `filePathFor`; and `Platform` for `pickFolder`, `openPath`, and `openExternal`. Workflows receive already-chosen inputs (for example the target folder) and never show UI. The Session Catalog and Session Workflows do not import `indesign` or `uxp`; their collaborators are injected, which is what makes them testable outside InDesign.
 
 <!-- diagram: component-overview | Components and dependencies (source: diagrams/component-overview.mmd) -->
 ![Components and dependencies](diagrams/component-overview.png)
 
-Simple record edits (rename, edit description, delete, list) go from the UI straight to the `SessionStore`; routing them through the workflows would add a pass-through layer with no behavior.
+Simple record edits and user-interaction platform calls go from the UI straight to their owning component; routing them through the workflows would add a pass-through layer with no behavior. The workflows own only operations with rules: which documents are savable, how a session is opened file by file, and how copies avoid overwriting.
 
 <!-- diagram: save-open-flow | Save and open flows (source: diagrams/save-open-flow.mmd) -->
 ![Save and open flows](diagrams/save-open-flow.png)
@@ -111,11 +112,11 @@ UXP has no right-click menu, so the CEP context-menu actions become an action ba
 | Open via button and double-click | Port | "Open" button (enabled when a row is selected) and row double-click. |
 | Continue past missing/failing files | Port | Each file is attempted independently; a summary reports opened, already open, missing, and failed counts. |
 | Open Session File | Port | Action bar "Show File" opens the session JSON with `shell.openPath`. |
-| Copy Session Docs | Port | Action bar "Copy Files…" picks a folder and copies each existing file; name collisions get a numeric suffix (see edge cases). |
+| Copy Session Docs | Port | Action bar "Copy Files…" picks a folder and copies each existing file; name collisions get a numeric suffix (see edge cases). Afterwards a confirm dialog reports the counts and offers to show the folder (`openPath`), matching CEP's "Open enclosing folder?" prompt. |
 | Rename Session | Adapt | Action bar "Rename…" edits `name` only; the file is not renamed. |
 | Add Description | Port | Action bar "Describe…" edits `description`. |
 | Delete Session with confirm | Port | Action bar "Delete…" shows a confirm dialog, then removes the JSON file. |
-| Collect Open Files | Port | Flyout "Collect Open Documents…". Same copy rules as Copy Files. |
+| Collect Open Files | Port | Flyout "Collect Open Documents…". Same copy rules and same post-copy "show folder" prompt as Copy Files (CEP opened the folder unconditionally; the prompt avoids an unasked-for consent dialog). |
 | Documentation link | Port | Flyout "Documentation" opens the repository README URL with `shell.openExternal`. |
 | — (new) | Add | Flyout "Show Sessions Folder" opens the storage folder; this replaces the need for a log file to locate data. |
 | Open Log File | Drop | UXP plugins log to the UXP Developer Tool console; there is no file logger to open. |
@@ -133,7 +134,7 @@ UXP has no right-click menu, so the CEP context-menu actions become an action ba
 | Untitled (never-saved) documents | Excluded; the result message states how many were skipped. If every open document is untitled, nothing is saved and the message says so. |
 | Documents with unsaved changes | The on-disk path is saved; the dialog notes that unsaved changes are not part of a session. |
 | Converted documents (opened from an older InDesign version, not yet saved in the new format) | Treated like untitled documents when InDesign reports no file for them; otherwise saved by path. Confirmed in the manual verification checklist. |
-| A session file already open in InDesign | Skipped and counted as "already open" (compared by normalized absolute path). |
+| A session file already open in InDesign | Skipped and counted as "already open" (paths compared after `path.normalize`-style cleanup of `.`/`..`/trailing separators, case-insensitively on macOS and Windows whose default volumes are case-insensitive). |
 | A file that no longer exists | Skipped and counted as "missing"; listed by name in the summary. |
 | A file that exists but fails to open | Error caught; counted as "failed"; remaining files still open. |
 | Missing-font / missing-link dialogs during open | InDesign's interaction level is not changed, matching CEP: the user sees and resolves those dialogs. |

@@ -41,6 +41,7 @@ com.sessions-uxp/
   test/
     __mocks__/indesign.js     # minimal app.documents / app.open fake
     __mocks__/uxp.js          # localFileSystem / shell fakes
+    support/nodeFs.js         # Node fs/promises restricted to the ADR-001 §3 fs subset
     sessions/*.test.js
     workflows/*.test.js
     host/*.test.js
@@ -54,7 +55,7 @@ com.sessions-uxp/
 ## Implementation order (commit checklist)
 
 - [ ] `chore:` tooling — `package.json` (jest, eslint, scripts `test`, `lint`), `VERSION` 0.1.0, Jest `moduleNameMapper` for `indesign` and `uxp`, ESLint flat config.
-- [ ] `feat:` Session Catalog — `session.js`, `storageLocation.js`, `SessionStore.js` with tests (Node `fs/promises` against a temp directory).
+- [ ] `feat:` Session Catalog — `session.js`, `storageLocation.js`, `SessionStore.js` with tests. Tests inject `test/support/nodeFs.js`, which wraps Node `fs/promises` and exposes only the `fs` subset listed in ADR-001 §3, against a per-test temp directory.
 - [ ] `feat:` Host Integration — `InDesignDocuments.js`, `Platform.js` with tests against the mocks.
 - [ ] `feat:` Session Workflows — `SessionWorkflows.js`, `fileNames.js` with tests using in-memory fakes of the catalog and host.
 - [ ] `feat:` Panel UI and manifest — `manifest.json`, `index.html`, `src/ui/*`, `src/main.js`, icons; manifest test.
@@ -77,10 +78,12 @@ Manual (`docs/MANUAL-VERIFICATION.md`, run by the user in InDesign through the U
 3. Already-open documents are skipped rather than reopened.
 4. Missing-font / missing-link dialogs appear and opening continues afterward.
 5. `shell.openPath` on the sessions folder and a session `.json` (consent prompt, `launchProcess.extensions` format).
-6. Theme follows InDesign light/dark.
-7. Smoke test: open three documents (one untitled) → Save → close all → Open → three-minus-one reopen, summary correct; Rename, Describe, Copy Files, Collect, Delete.
+6. UXP `fs.rename` replaces an existing `<id>.json` (exercised by Rename and Describe on an existing session).
+7. Theme follows InDesign light/dark.
+8. Smoke test: open three documents (one untitled) → Save → close all → Open → three-minus-one reopen, summary correct; Rename, Describe, Copy Files (with a name collision), Collect, Delete.
+9. Windows (when a Windows machine is available): sessions folder resolves under `%APPDATA%`, and the smoke test passes.
 
-"Done" for the implementation PR means the automated suite and lint pass and the manual checklist exists; in-host results are reported by the user and any defect found is fixed in a follow-up PR.
+"Done" for the implementation PR means the automated suite and lint pass, Archie and Koala have signed off, and the manual checklist exists. The PR is then merged; in-host results are reported by the user, and any defect found is fixed in a follow-up PR. Host behavior in items 1–2 (document paths and opening) is the main residual risk of merging before an in-host run.
 
 ## Versioning
 
