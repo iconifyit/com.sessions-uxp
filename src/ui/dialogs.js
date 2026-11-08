@@ -87,13 +87,18 @@ const promptSessionDetails = (doc, { title, okLabel, name, description, note }) 
     const fields = [];
     let nameField;
     let descriptionField;
+    // Labels sit in each field's "label" slot, the Spectrum UXP way to associate a label with its input.
     if (name !== undefined) {
-        nameField = element(doc, 'sp-textfield', { value : name, class : 'dialog-field', placeholder : 'Session name' });
-        fields.push(element(doc, 'sp-label', {}, ['Name']), nameField);
+        nameField = element(doc, 'sp-textfield', { value : name, class : 'dialog-field', placeholder : 'Session name' }, [
+            element(doc, 'sp-label', { slot : 'label', isrequired : 'true' }, ['Name']),
+        ]);
+        fields.push(nameField);
     }
     if (description !== undefined) {
-        descriptionField = element(doc, 'sp-textarea', { value : description, class : 'dialog-field', placeholder : 'Optional' });
-        fields.push(element(doc, 'sp-label', {}, ['Description']), descriptionField);
+        descriptionField = element(doc, 'sp-textarea', { value : description, class : 'dialog-field', placeholder : 'Optional' }, [
+            element(doc, 'sp-label', { slot : 'label' }, ['Description']),
+        ]);
+        fields.push(descriptionField);
     }
     if (note) {
         fields.push(element(doc, 'sp-body', { size : 'S', class : 'dialog-note' }, [note]));
