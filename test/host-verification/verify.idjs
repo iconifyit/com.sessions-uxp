@@ -166,6 +166,13 @@ const run = async () => {
     for (let index = 0; index < app.documents.length; index++) {
         openNow.push(app.documents.item(index));
     }
+    await step('remove', async () => {
+        const doomed = await store.create({ name : 'Delete me', files : [paths.catalog] });
+        await store.remove(doomed.id);
+        const entries = await fs.readdir(`${kWORK}/sessions`);
+        check('remove deletes the session file via UXP fs.unlink', !entries.includes(`${doomed.id}.json`) && entries.length > 0, entries);
+    });
+
     for (const document of openNow) {
         try {
             const entry = await document.fullName;

@@ -1,4 +1,5 @@
 const { baseName, joinPath, pathKey, uniqueTargetName } = require('./fileNames.js');
+const { defaultSessionName }                              = require('../sessions/session.js');
 
 /**
  * User-level use cases that coordinate the Session Catalog and Host Integration.
@@ -13,8 +14,10 @@ class SessionWorkflows {
      * @param {object} params.documents - InDesignDocuments.
      * @param {object} params.platform - Platform.
      * @param {boolean} params.caseInsensitivePaths - True on macOS and Windows.
+     * @param {() => Date} [params.now] - Clock.
      */
-    constructor({ store, documents, platform, caseInsensitivePaths }) {
+    constructor({ store, documents, platform, caseInsensitivePaths, now = () => new Date() }) {
+        this.now                  = now;
         this.store                = store;
         this.documents            = documents;
         this.platform             = platform;
@@ -22,8 +25,8 @@ class SessionWorkflows {
     }
 
     /**
-     * Describes which open documents a session would contain.
-     * @returns {Promise<{ savablePaths: string[], untitledCount: number, modifiedCount: number }>}
+     * Describes which open documents a session would contain, with the default name for a new session.
+     * @returns {Promise<{ savablePaths: string[], untitledCount: number, modifiedCount: number, defaultName: string }>}
      */
     async inspectOpenDocuments() {
         const openDocuments = await this.documents.listOpenDocuments();
@@ -32,6 +35,7 @@ class SessionWorkflows {
             savablePaths  : savable.map((document) => document.path),
             untitledCount : openDocuments.length - savable.length,
             modifiedCount : savable.filter((document) => document.modified).length,
+            defaultName   : defaultSessionName(this.now()),
         };
     }
 

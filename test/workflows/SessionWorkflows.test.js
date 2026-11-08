@@ -55,7 +55,13 @@ const setup = ({ openDocuments = [], sessions = [], existingPaths = [], onOpen }
     const app       = fakeApp({ documents : openDocuments, onOpen });
     const store     = fakeStore(sessions);
     const platform  = fakePlatform(existingPaths);
-    const workflows = new SessionWorkflows({ store, documents : new InDesignDocuments({ app }), platform, caseInsensitivePaths : true });
+    const workflows = new SessionWorkflows({
+        store,
+        documents            : new InDesignDocuments({ app }),
+        platform,
+        caseInsensitivePaths : true,
+        now                  : () => new Date(2026, 10, 8, 14, 32, 5),
+    });
     return { workflows, app, store, platform };
 };
 
@@ -86,15 +92,15 @@ describe('SessionWorkflows.saveOpenDocuments', () => {
         expect(store.create).not.toHaveBeenCalled();
     });
 
-    test('inspectOpenDocuments counts untitled and modified documents', async () => {
-        // Scenario: the Save dialog notes unsaved changes before saving.
+    test('inspectOpenDocuments counts untitled and modified documents and proposes a default name', async () => {
+        // Scenario: the Save dialog notes unsaved changes and prefills the name.
         const { workflows } = setup({ openDocuments : [
             fakeDocument({ name : 'order-form.indd', path : kORDER, modified : true }),
             fakeDocument({ name : 'Untitled-1', path : null, modified : true }),
             fakeDocument({ name : 'catalog-2027.indd', path : kCATALOG }),
         ] });
 
-        await expect(workflows.inspectOpenDocuments()).resolves.toEqual({ savablePaths : [kORDER, kCATALOG], untitledCount : 1, modifiedCount : 1 });
+        await expect(workflows.inspectOpenDocuments()).resolves.toEqual({ savablePaths : [kORDER, kCATALOG], untitledCount : 1, modifiedCount : 1, defaultName : '2026-11-08 14:32' });
     });
 });
 

@@ -1,4 +1,3 @@
-const { defaultSessionName } = require('../sessions/session.js');
 const {
     describeCopyResult,
     describeInvalidFiles,
@@ -230,7 +229,7 @@ class SessionsPanel {
      */
     async saveSession() {
         this.clearMessage();
-        const { savablePaths, untitledCount, modifiedCount } = await this.workflows.inspectOpenDocuments();
+        const { savablePaths, untitledCount, modifiedCount, defaultName } = await this.workflows.inspectOpenDocuments();
         if (savablePaths.length === 0 && untitledCount === 0) {
             this.showMessage({ tone : 'warning', text : 'There are no open documents to save.' });
             return;
@@ -249,7 +248,7 @@ class SessionsPanel {
         const details = await this.dialogs.promptSessionDetails(this.doc, {
             title       : 'Save Session',
             okLabel     : 'Save',
-            name        : defaultSessionName(new Date()),
+            name        : defaultName,
             description : '',
             note        : notes.join(' '),
         });
