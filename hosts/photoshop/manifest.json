@@ -1,0 +1,69 @@
+{
+    "manifestVersion": 5,
+    "id": "com.atomic.photoshop-sessions",
+    "name": "Sessions",
+    "version": "0.2.0",
+    "main": "index.html",
+    "host": {
+        "app": "PS",
+        "minVersion": "26.0.0"
+    },
+    "entrypoints": [
+        {
+            "type": "panel",
+            "id": "sessionsPanel",
+            "label": {
+                "default": "Sessions"
+            },
+            "minimumSize": {
+                "width": 230,
+                "height": 220
+            },
+            "maximumSize": {
+                "width": 2000,
+                "height": 2000
+            },
+            "preferredDockedSize": {
+                "width": 280,
+                "height": 380
+            },
+            "preferredFloatingSize": {
+                "width": 300,
+                "height": 420
+            },
+            "icons": [
+                {
+                    "width": 23,
+                    "height": 23,
+                    "path": "icons/panel-dark.png",
+                    "scale": [1, 2],
+                    "theme": ["darkest", "dark", "medium"]
+                },
+                {
+                    "width": 23,
+                    "height": 23,
+                    "path": "icons/panel-light.png",
+                    "scale": [1, 2],
+                    "theme": ["lightest", "light"]
+                }
+            ]
+        }
+    ],
+    "icons": [
+        {
+            "width": 48,
+            "height": 48,
+            "path": "icons/plugin.png",
+            "scale": [1, 2],
+            "theme": ["all"],
+            "species": ["pluginList"]
+        }
+    ],
+    "requiredPermissions": {
+        "localFileSystem": "fullAccess",
+        "launchProcess": {
+            "schemes": ["https"],
+            "extensions": ["", ".json"]
+        }
+    }
+}
