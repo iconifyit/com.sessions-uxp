@@ -131,6 +131,27 @@ describe('SessionWorkflows.openSession', () => {
         expect(app.openedPaths).toEqual([kORDER]);
     });
 
+    test('an asynchronous open failure is counted as failed, not opened', async () => {
+        // Scenario: Photoshop rejects opening a damaged file from inside its modal scope.
+        const session = { id : '20261108-143205-k3f9', files : [kCATALOG, kORDER] };
+        const { workflows } = setup({ sessions : [session], existingPaths : [kCATALOG, kORDER] });
+        const asyncDocuments = {
+            listOpenDocuments : async () => [],
+            openDocument      : async (path) => {
+                if (path === kCATALOG) {
+                    throw new Error('The document could not be opened.');
+                }
+                return { name : 'order-form.indd' };
+            },
+        };
+        workflows.documents = asyncDocuments;
+
+        const result = await workflows.openSession(session.id);
+
+        expect(result.failed).toEqual([{ path : kCATALOG, reason : 'The document could not be opened.' }]);
+        expect(result.opened).toEqual([kORDER]);
+    });
+
     test('opens a document listed twice only once', async () => {
         // Scenario: a hand-edited session lists the same file with a trailing separator and a .. segment.
         const session = { id : '20261108-143205-k3f9', files : [kORDER, `${kCLIENT}/../spring-catalog/order-form.indd/`] };

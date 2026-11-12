@@ -82,7 +82,8 @@ class SessionWorkflows {
                     result.missing.push(path);
                     continue;
                 }
-                this.documents.openDocument(path);
+                // Awaited: a host may open asynchronously (Photoshop) and reject per file.
+                await this.documents.openDocument(path);
                 openKeys.add(key);
                 result.opened.push(path);
             }
