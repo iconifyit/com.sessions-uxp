@@ -2,7 +2,7 @@
   "name": "com.sessions-uxp",
   "version": "0.3.0",
   "private": true,
-  "description": "Adobe InDesign UXP panel that saves the open documents as a named work session and reopens them later.",
+  "description": "Adobe InDesign and Photoshop UXP panels that save the open documents as a named work session and reopen them later.",
   "license": "MIT",
   "author": "Scott Lewis <scott@atomiclotus.net>",
   "repository": {
