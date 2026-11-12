@@ -3,11 +3,11 @@ const {
     createSession,
     defaultSessionName,
     generateId,
-    isAbsolutePath,
     parseSession,
     serializeSession,
     sortNewestFirst,
 } = require('../../src/sessions/session.js');
+const { isAbsolutePath } = require('../../src/shared/paths.js');
 
 const kNOW     = new Date('2026-11-08T14:32:05.120Z');
 const kID      = '20261108-143205-k3f9';

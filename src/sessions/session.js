@@ -4,6 +4,8 @@
  * Pure functions only; persistence lives in SessionStore. See ADR-001 §3 for the format.
  */
 
+const { isAbsolutePath } = require('../shared/paths.js');
+
 const kSCHEMA_VERSION = 1;
 const kID_PATTERN     = /^\d{8}-\d{6}-[a-z0-9]{4}$/;
 const kID_ALPHABET    = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -60,18 +62,6 @@ const isValidId = (id) => typeof id === 'string' && kID_PATTERN.test(id);
 const defaultSessionName = (now) => {
     const date = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
     return `${date} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-};
-
-/**
- * Returns true for an absolute macOS/POSIX path, Windows drive path, or UNC path.
- * @param {*} path
- * @returns {boolean}
- */
-const isAbsolutePath = (path) => {
-    if (typeof path !== 'string' || path.length === 0) {
-        return false;
-    }
-    return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('\\\\');
 };
 
 /**
@@ -204,7 +194,6 @@ module.exports = {
     createSession,
     defaultSessionName,
     generateId,
-    isAbsolutePath,
     isValidId,
     normalizeName,
     parseSession,
