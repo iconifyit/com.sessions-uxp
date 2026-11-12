@@ -2,18 +2,6 @@
  * Composition root: selects the running host (InDesign or Photoshop), builds the
  * components with their real host and UXP collaborators, and registers the panel.
  */
-const uxp             = require('uxp');
-const fs              = require('fs');
-const os              = require('os');
-
-const { resolveSessionsLocation } = require('./sessions/storageLocation.js');
-const { SessionStore }            = require('./sessions/SessionStore.js');
-const { Platform }                = require('./host/Platform.js');
-const { selectHost }              = require('./hosts.js');
-const { SessionWorkflows }        = require('./workflows/SessionWorkflows.js');
-const { SessionsPanel, kFLYOUT_MENU_ITEMS } = require('./ui/panel.js');
-const dialogs                     = require('./ui/dialogs.js');
-
 const kPANEL_ID          = 'sessionsPanel';
 const kDOCUMENTATION_URL = 'https://github.com/iconifyit/com.sessions-uxp#readme';
 
@@ -32,6 +20,19 @@ const reportStartupFailure = (error) => {
 };
 
 try {
+    // Loaded inside the try so a module that fails to load is also reported in the panel.
+    const uxp = require('uxp');
+    const fs  = require('fs');
+    const os  = require('os');
+
+    const { resolveSessionsLocation } = require('./sessions/storageLocation.js');
+    const { SessionStore }            = require('./sessions/SessionStore.js');
+    const { Platform }                = require('./host/Platform.js');
+    const { selectHost }              = require('./hosts.js');
+    const { SessionWorkflows }        = require('./workflows/SessionWorkflows.js');
+    const { SessionsPanel, kFLYOUT_MENU_ITEMS } = require('./ui/panel.js');
+    const dialogs                     = require('./ui/dialogs.js');
+
     const host      = selectHost(uxp.host.name, { requireHost : require, localFileSystem : uxp.storage.localFileSystem });
     const location  = resolveSessionsLocation({ homeDirectory : os.homedir(), platform : os.platform(), pluginFolder : host.pluginId });
     const store     = new SessionStore({ fs, directory : location.directory, separator : location.separator });
