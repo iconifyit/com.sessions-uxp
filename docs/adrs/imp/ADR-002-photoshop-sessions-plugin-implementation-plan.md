@@ -23,15 +23,15 @@ Two pull requests against `develop`, each from its own `claude/` branch, reviewe
 
 ## Implementation order (commit checklist)
 
-- [ ] `test:` red test — an asynchronously rejecting `openDocument` must be counted as failed by `openSession` (fails before the fix).
-- [ ] `fix:` `openSession` awaits `openDocument`.
-- [ ] `feat:` `resolveSessionsLocation` takes the plugin folder; tests for both plugin ids on macOS and Windows.
-- [ ] `feat:` `PhotoshopDocuments` with Jest tests against a fake reproducing the observed Photoshop behavior (string `path`, `""` for untitled, cloud identifier, non-absolute identifier, entry-only `app.open`, modal scope, `app.open` resolving without a document → rejected).
-- [ ] `feat:` `src/hosts.js` host table and `selectHost` with tests (each mapping, lazy require of only the selected host, unknown host throws); `main.js` wiring.
-- [ ] `build:` per-host manifests, `scripts/build.mjs`, npm scripts, `.gitignore`; manifest tests cover both manifests (shared `VERSION`, distinct plugin ids, each `src/hosts.js` plugin id equal to that host manifest's `id` (imported, not string-matched), `host.app`/`minVersion`, identical permissions, panel id matches `main.js`, every referenced file present in the built folder).
-- [ ] `test:` in-host suite for both hosts: shared check core with thin entry scripts (`verify.idjs`, `verify.psjs`); `npm run test:host -- --host indesign|photoshop`. Photoshop runs via `open -a`; cleanup closes only suite-created documents (by id or by path inside the run's work folder).
+- [x] `test:` red test — an asynchronously rejecting `openDocument` must be counted as failed by `openSession` (fails before the fix).
+- [x] `fix:` `openSession` awaits `openDocument`.
+- [x] `feat:` `resolveSessionsLocation` takes the plugin folder; tests for both plugin ids on macOS and Windows.
+- [x] `feat:` `PhotoshopDocuments` with Jest tests against a fake reproducing the observed Photoshop behavior (string `path`, `""` for untitled, cloud identifier, non-absolute identifier, entry-only `app.open`, modal scope, `app.open` resolving without a document → rejected).
+- [x] `feat:` `src/hosts.js` host table and `selectHost` with tests (each mapping, lazy require of only the selected host, unknown host throws); `main.js` wiring.
+- [x] `build:` per-host manifests, `scripts/build.mjs`, npm scripts, `.gitignore`; manifest tests cover both manifests (shared `VERSION`, distinct plugin ids, each `src/hosts.js` plugin id equal to that host manifest's `id` (imported, not string-matched), `host.app`/`minVersion`, identical permissions, panel id matches `main.js`, every referenced file present in the built folder).
+- [x] `test:` in-host suite for both hosts: shared check core with thin entry scripts (`verify.idjs`, `verify.psjs`); `npm run test:host -- --host indesign|photoshop`. Photoshop runs via `open -a`; cleanup closes only suite-created documents (by id or by path inside the run's work folder).
 - [x] `docs:` ADR-001 pointer document notes the amendment by ADR-002.
-- [ ] `docs:` README (both hosts, build and load instructions, storage folders) and version 0.3.0 (`VERSION`, `package.json`, `package-lock.json`, both manifests).
+- [x] `docs:` README (both hosts, build and load instructions, storage folders) and version 0.3.0 (`VERSION`, `package.json`, `package-lock.json`, both manifests).
 
 ## Verification
 
