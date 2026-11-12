@@ -1,0 +1,65 @@
+/**
+ * Photoshop entry point for the in-host suite (suite.js), run as a UXP script by run.mjs.
+ *
+ * Test documents are copies of a seed PNG opened from disk, because Photoshop saves only
+ * through format-specific save APIs; opening them exercises the real open path.
+ */
+const { app, core }       = require('photoshop');
+const uxp                 = require('uxp');
+const fs                  = require('fs');
+
+const config                 = require('./config.generated.js');
+const { runSuite }           = require('./suite.js');
+const { PhotoshopDocuments } = require('../../src/host/PhotoshopDocuments.js');
+const { Platform }           = require('../../src/host/Platform.js');
+
+const { localFileSystem } = uxp.storage;
+
+/**
+ * Runs an action in Photoshop's modal scope, as document changes require.
+ * @param {string} commandName
+ * @param {() => Promise<*>} action
+ * @returns {Promise<*>}
+ */
+const modal = (commandName, action) => core.executeAsModal(action, { commandName });
+
+/**
+ * Photoshop fixture: documents are seed-image copies on disk, opened in Photoshop.
+ * @param {{ result: object, writeResult: () => void }} tracking
+ * @returns {object}
+ */
+const createFixture = ({ result, writeResult }) => ({
+    hostName  : 'Photoshop',
+    extension : '.png',
+    documents : new PhotoshopDocuments({ app, core, localFileSystem }),
+    createSavedDocument : async (path) => {
+        await fs.copyFile(config.seedImagePath, path);
+        const entry    = await localFileSystem.getEntryWithUrl(`file:${path}`);
+        const document = await modal('Open suite document', () => app.open(entry));
+        result.documentIds.push(document.id);
+        writeResult();
+        return document;
+    },
+    createUntitledDocument : async () => {
+        const document = await modal('Create suite document', () => app.documents.add({ width : 64, height : 64 }));
+        result.documentIds.push(document.id);
+        writeResult();
+        return document.name;
+    },
+    closeDocument : (document) => modal('Close suite document', () => document.closeWithoutSaving()),
+    closeSuiteDocuments : (prefix) => modal('Close suite documents', async () => {
+        for (const document of [...app.documents]) {
+            if (result.documentIds.includes(document.id) || (document.path || '').startsWith(prefix)) {
+                await document.closeWithoutSaving();
+            }
+        }
+    }),
+});
+
+// Top-level await keeps the script alive until every asynchronous step has finished.
+await runSuite({
+    fs,
+    platform : new Platform({ fs, localFileSystem, shell : uxp.shell }),
+    config,
+    createFixture,
+});
