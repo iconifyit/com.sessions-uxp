@@ -3,7 +3,7 @@ const globals = require('globals');
 
 module.exports = [
     {
-        ignores : ['node_modules/**', 'test/host-verification/config.generated.js'],
+        ignores : ['node_modules/**', 'dist/**', 'test/host-verification/config.generated.js'],
     },
     js.configs.recommended,
     {

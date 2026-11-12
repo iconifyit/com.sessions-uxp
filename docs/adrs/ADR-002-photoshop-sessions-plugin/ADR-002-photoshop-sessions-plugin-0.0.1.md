@@ -42,7 +42,7 @@ Photoshop 26.0 (Photoshop 2025) is the minimum, matching the InDesign 2025 floor
 
 ### 2. Copy-only build
 
-`npm run build` assembles `dist/indesign/` and `dist/photoshop/`, each containing that host's `manifest.json` plus the shared `index.html`, `src/`, and `icons/`. `npm run package` zips each folder into `dist/<plugin-id>-<version>.ccx`. `dist/` is ignored by git. The build copies files only — no transpiling or bundling — so the source that runs is the source in `src/`. For development, the UXP Developer Tool loads `dist/<host>/manifest.json` after a build.
+`npm run build` assembles `dist/indesign/` and `dist/photoshop/`, each containing that host's `manifest.json` plus the shared `index.html`, `index.js`, `src/`, and `icons/`. `npm run package` zips each folder into `dist/<plugin-id>-<version>.ccx`. `dist/` is ignored by git. The build copies files only — no transpiling or bundling — so the source that runs is the source in `src/`. For development, the UXP Developer Tool loads `dist/<host>/manifest.json` after a build.
 
 ### 3. Storage per plugin
 

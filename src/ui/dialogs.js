@@ -50,8 +50,10 @@ const runDialog = async (doc, dialog, readResult, cancelValue) => {
     try {
         await dialog.showModal();
     }
-    catch (_error) {
-        // showModal rejects when the user presses Escape or closes the dialog window.
+    catch (error) {
+        // showModal rejects when the user presses Escape or closes the dialog window, and also
+        // when the host refuses to show a modal; every rejection is logged to tell them apart.
+        console.warn('[Sessions] Dialog closed without confirmation:', error && error.message ? error.message : error);
         result = cancelValue;
     }
     finally {
