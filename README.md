@@ -21,7 +21,7 @@ npm run package   # also dist/com.atomic.indesign-sessions-<version>.ccx and dis
 
 **For development:** run `npm run build`, open the Adobe UXP Developer Tool, choose **Add Plugin**, select `dist/indesign/manifest.json` or `dist/photoshop/manifest.json`, then **Load**. Rebuild after changing the source. In InDesign the panel is under **Plug-Ins → Sessions**; in Photoshop it is under **Plugins → Sessions**.
 
-**As a package:** run `npm run package`, then double-click a `.ccx` in `dist/` (or run Adobe's `UnifiedPluginInstallerAgent --install <file>.ccx`). Each package installs into its own app. Remove one with `UnifiedPluginInstallerAgent --remove Sessions`.
+**As a package:** run `npm run package`, then double-click a `.ccx` in `dist/`, or run Adobe's `UnifiedPluginInstallerAgent --install "$PWD/dist/<file>.ccx"` — the installer needs an absolute path (a relative path fails with status -160). Each package installs into its own app. Remove one with `UnifiedPluginInstallerAgent --remove Sessions`.
 
 ## Using the panel
 
