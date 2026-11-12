@@ -1,0 +1,31 @@
+%%{init: {'theme':'base','themeVariables':{
+'fontFamily':'system-ui, sans-serif',
+'primaryColor':'#e3cff3','primaryBorderColor':'#730FC3','primaryTextColor':'#293845',
+'lineColor':'#788896','clusterBkg':'#ffffff','clusterBorder':'#788896','edgeLabelBackground':'#ffffff'
+}}}%%
+flowchart LR
+  subgraph Repository
+    src[Shared src/ · index.html · icons/]
+    idm[/hosts/indesign/manifest.json/]
+    psm[/hosts/photoshop/manifest.json/]
+  end
+  build[npm run build / package<br/>copy only]
+  subgraph dist/
+    idd[dist/indesign/<br/>com.atomic.indesign-sessions.ccx]
+    psd[dist/photoshop/<br/>com.atomic.photoshop-sessions.ccx]
+  end
+  src --> build
+  idm --> build
+  psm --> build
+  build --> idd
+  build --> psd
+  subgraph Runtime main.js
+    host{uxp.host.name}
+    idad[InDesignDocuments<br/>sessions: com.atomic.indesign-sessions]
+    psad[PhotoshopDocuments<br/>sessions: com.atomic.photoshop-sessions]
+  end
+  idd --> host
+  psd --> host
+  host -->|InDesign| idad
+  host -->|Photoshop| psad
+  classDef house fill:#e3cff3,stroke:#730FC3,stroke-width:2px,color:#293845;
