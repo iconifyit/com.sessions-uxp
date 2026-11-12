@@ -6,4 +6,4 @@ Implementation plan: [ADR-002-photoshop-sessions-plugin-implementation-plan.md](
 
 | Version | Status | Date |
 | --- | --- | --- |
-| [0.0.1](ADR-002-photoshop-sessions-plugin-0.0.1.md) | Proposed | 2026-11-12 |
+| [0.0.1](ADR-002-photoshop-sessions-plugin-0.0.1.md) | Accepted | 2026-11-12 |

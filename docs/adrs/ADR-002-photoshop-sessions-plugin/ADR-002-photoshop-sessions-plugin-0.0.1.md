@@ -1,6 +1,6 @@
 # ADR-002: Photoshop Sessions Plugin
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-11-12
 **Deciders**: Scott Lewis
 **Version**: 0.0.1
