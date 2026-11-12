@@ -57,21 +57,21 @@ The documents contract becomes:
 
 `InDesignDocuments` already satisfies it (its synchronous `openDocument` result is awaited the same way). New `PhotoshopDocuments` (`src/host/PhotoshopDocuments.js`):
 
-- Lists `app.documents`; `path` is null when `Document.path` is `""` or the document is a cloud document; `modified` is `!saved`.
-- Opens one file per call: `getEntryWithUrl("file:" + path)`, then `app.open(entry)` inside `core.executeAsModal` with `interactive: true`, so Photoshop's own open-time prompts (for example a color-profile mismatch or missing fonts) appear and are resolved by the user — the same policy as ADR-001 §6 for InDesign. Whether every such prompt appears inside a plugin's modal scope is confirmed during in-host verification. Any failure — missing file, damaged file, or Photoshop already busy in another modal operation — rejects, and the workflow counts that file as failed and continues.
+- Lists `app.documents`; `path` is null when `Document.path` is `""`, when the document is a cloud document, or when the value is not an absolute path (so an unrecognized non-file document is skipped as "not saved to disk yet" instead of failing the whole Save); `modified` is `!saved`.
+- Opens one file per call: `getEntryWithUrl("file:" + path)`, then `app.open(entry)` inside `core.executeAsModal` with `interactive: true`, so Photoshop's own open-time prompts (for example a color-profile mismatch or missing fonts) appear and are resolved by the user — the same policy as ADR-001 §6 for InDesign. Whether every such prompt appears inside a plugin's modal scope is confirmed during in-host verification. If `app.open` resolves without a document (for example the user cancels such a prompt), `openDocument` rejects with "not opened", so the file is counted as failed rather than opened. Any failure — missing file, damaged file, or Photoshop already busy in another modal operation — rejects, and the workflow counts that file as failed and continues.
 
 `SessionWorkflows.openSession` awaits `openDocument`, so an asynchronous failure is counted as failed rather than opened.
 
-### 5. Host selection in the composition root
+### 5. Host selection
 
-`src/main.js` holds one host table, the single source of each host's plugin id:
+`src/hosts.js` holds one host table, the single source of each host's plugin id, and a pure `selectHost(hostName, { requireHost })` that returns `{ pluginId, documents }` for the running host. Host modules are obtained only through the injected `requireHost`, so the selection is unit-tested without InDesign or Photoshop, and only the selected host's module is ever required:
 
 | `uxp.host.name` | Plugin id (storage folder) | Documents adapter | Host module |
 | --- | --- | --- | --- |
 | `InDesign` | `com.atomic.indesign-sessions` | `InDesignDocuments` | `require("indesign").app` |
 | `Photoshop` | `com.atomic.photoshop-sessions` | `PhotoshopDocuments` | `require("photoshop")` (`app`, `core`) |
 
-`main.js` reads `require("uxp").host.name`, looks up the entry, requires only that host's module (requiring the other host's module throws), builds the adapter, and passes the entry's plugin id to `resolveSessionsLocation`. An unrecognized host fails at load with a clear error rather than guessing. A manifest test asserts that each table entry's plugin id equals the `id` in that host's manifest, so the InDesign entry cannot drift from `com.atomic.indesign-sessions` and hide existing sessions. Nothing else in `src/` knows which host it runs in.
+`src/main.js` (the composition root) passes `require("uxp").host.name` and `require` to `selectHost`, then gives the entry's plugin id to `resolveSessionsLocation`. Requiring the other host's module would throw, which is why selection requires lazily. An unrecognized host fails at load with a clear error rather than guessing. Tests assert each mapping (`InDesign` → `InDesignDocuments` and `com.atomic.indesign-sessions`; `Photoshop` → `PhotoshopDocuments` and `com.atomic.photoshop-sessions`), that only the selected host's module is required, that an unknown host throws, and — in the manifest test — that each table entry's plugin id equals the `id` in that host's manifest, so the InDesign entry cannot drift and hide existing sessions. Nothing else in `src/` knows which host it runs in.
 
 <!-- diagram: host-build-layout | Hosts, build, and runtime adapter selection (source: diagrams/host-build-layout.mmd) -->
 ![Hosts, build, and runtime adapter selection](diagrams/host-build-layout.png)
