@@ -1,16 +1,15 @@
 /**
- * Composition root: builds the components with their real InDesign and UXP collaborators
- * and registers the panel entry point.
+ * Composition root: selects the running host (InDesign or Photoshop), builds the
+ * components with their real host and UXP collaborators, and registers the panel.
  */
-const { app }         = require('indesign');
 const uxp             = require('uxp');
 const fs              = require('fs');
 const os              = require('os');
 
 const { resolveSessionsLocation } = require('./sessions/storageLocation.js');
 const { SessionStore }            = require('./sessions/SessionStore.js');
-const { InDesignDocuments }       = require('./host/InDesignDocuments.js');
 const { Platform }                = require('./host/Platform.js');
+const { selectHost }              = require('./hosts.js');
 const { SessionWorkflows }        = require('./workflows/SessionWorkflows.js');
 const { SessionsPanel, kFLYOUT_MENU_ITEMS } = require('./ui/panel.js');
 const dialogs                     = require('./ui/dialogs.js');
@@ -18,12 +17,13 @@ const dialogs                     = require('./ui/dialogs.js');
 const kPANEL_ID          = 'sessionsPanel';
 const kDOCUMENTATION_URL = 'https://github.com/iconifyit/com.sessions-uxp#readme';
 
-const location  = resolveSessionsLocation({ homeDirectory : os.homedir(), platform : os.platform() });
+const host      = selectHost(uxp.host.name, { requireHost : require, localFileSystem : uxp.storage.localFileSystem });
+const location  = resolveSessionsLocation({ homeDirectory : os.homedir(), platform : os.platform(), pluginFolder : host.pluginId });
 const store     = new SessionStore({ fs, directory : location.directory, separator : location.separator });
 const platform  = new Platform({ fs, localFileSystem : uxp.storage.localFileSystem, shell : uxp.shell });
 const workflows = new SessionWorkflows({
     store,
-    documents            : new InDesignDocuments({ app }),
+    documents            : host.documents,
     platform,
     // Default volumes on macOS and Windows are case-insensitive.
     caseInsensitivePaths : true,
