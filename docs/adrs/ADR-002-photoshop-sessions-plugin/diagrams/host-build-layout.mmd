@@ -11,8 +11,8 @@ flowchart LR
   end
   build[npm run build / package<br/>copy only]
   subgraph dist/
-    idd[dist/indesign/<br/>com.atomic.indesign-sessions.ccx]
-    psd[dist/photoshop/<br/>com.atomic.photoshop-sessions.ccx]
+    idd[dist/indesign/ →<br/>dist/com.atomic.indesign-sessions-&lt;version&gt;.ccx]
+    psd[dist/photoshop/ →<br/>dist/com.atomic.photoshop-sessions-&lt;version&gt;.ccx]
   end
   src --> build
   idm --> build
@@ -20,7 +20,7 @@ flowchart LR
   build --> idd
   build --> psd
   subgraph Runtime main.js
-    host{uxp.host.name}
+    host{uxp.host.name<br/>host table}
     idad[InDesignDocuments<br/>sessions: com.atomic.indesign-sessions]
     psad[PhotoshopDocuments<br/>sessions: com.atomic.photoshop-sessions]
   end

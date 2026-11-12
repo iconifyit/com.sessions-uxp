@@ -4,7 +4,7 @@
 **Date**: 2026-11-12
 **Deciders**: Scott Lewis
 **Version**: 0.0.1
-**Amends**: [ADR-001 v0.0.3](../ADR-001-indesign-uxp-sessions-plugin/ADR-001-indesign-uxp-sessions-plugin-0.0.3.md) §1 (host and platform: one manifest, no build step) and §4 (Host Integration contract). All other ADR-001 decisions — session format, storage rules, workflows, panel UI, edge cases — apply unchanged to both hosts.
+**Amends**: [ADR-001 v0.0.3](../ADR-001-indesign-uxp-sessions-plugin/ADR-001-indesign-uxp-sessions-plugin-0.0.3.md) — §1 (host and platform: one manifest, no build step), §2 (storage folder generalized from the InDesign plugin id to the running plugin's id), §4 (Host Integration contract), its Rationale statement that the folder loads directly in the UXP Developer Tool with no build, and its Consequences note that packages come from the UXP Developer Tool. All other ADR-001 decisions — session format, workflows, panel UI, edge cases — apply unchanged to both hosts. ADR-001's text is not revised; its pointer document notes that ADR-002 amends it, and ADR-002 governs wherever the two differ.
 
 ## Context
 
@@ -46,7 +46,7 @@ Photoshop 26.0 (Photoshop 2025) is the minimum, matching the InDesign 2025 floor
 
 ### 3. Storage per plugin
 
-The sessions folder becomes `<appData>/com.atomic/<plugin id>/sessions/`. InDesign keeps `com.atomic.indesign-sessions/sessions/`, so existing InDesign sessions are untouched and nothing is migrated. Photoshop uses `com.atomic.photoshop-sessions/sessions/`. Sessions are therefore never shared between hosts, which also prevents opening `.indd` files in Photoshop or images in InDesign. `resolveSessionsLocation` takes the plugin folder name as a parameter.
+The sessions folder becomes `<appData>/com.atomic/<plugin id>/sessions/`. InDesign keeps `com.atomic.indesign-sessions/sessions/`, so existing InDesign sessions are untouched and nothing is migrated. Photoshop uses `com.atomic.photoshop-sessions/sessions/`. Sessions are therefore never shared between hosts, which also prevents opening `.indd` files in Photoshop or images in InDesign. `resolveSessionsLocation` takes the plugin folder name as a parameter; the value is the plugin id from the host table in §5.
 
 ### 4. Host Integration: one documents adapter per host
 
@@ -58,13 +58,20 @@ The documents contract becomes:
 `InDesignDocuments` already satisfies it (its synchronous `openDocument` result is awaited the same way). New `PhotoshopDocuments` (`src/host/PhotoshopDocuments.js`):
 
 - Lists `app.documents`; `path` is null when `Document.path` is `""` or the document is a cloud document; `modified` is `!saved`.
-- Opens one file per call: `getEntryWithUrl("file:" + path)`, then `app.open(entry)` inside `core.executeAsModal`. Any failure — missing file, damaged file, or Photoshop already busy in another modal operation — rejects, and the workflow counts that file as failed and continues.
+- Opens one file per call: `getEntryWithUrl("file:" + path)`, then `app.open(entry)` inside `core.executeAsModal` with `interactive: true`, so Photoshop's own open-time prompts (for example a color-profile mismatch or missing fonts) appear and are resolved by the user — the same policy as ADR-001 §6 for InDesign. Whether every such prompt appears inside a plugin's modal scope is confirmed during in-host verification. Any failure — missing file, damaged file, or Photoshop already busy in another modal operation — rejects, and the workflow counts that file as failed and continues.
 
 `SessionWorkflows.openSession` awaits `openDocument`, so an asynchronous failure is counted as failed rather than opened.
 
 ### 5. Host selection in the composition root
 
-`src/main.js` reads `require("uxp").host.name` and requires only that host's module (`indesign` or `photoshop`) — requiring the other host's module throws. It then builds the matching documents adapter and passes the plugin folder name to `resolveSessionsLocation`. An unrecognized host fails at load with a clear error rather than guessing. Nothing else in `src/` knows which host it runs in.
+`src/main.js` holds one host table, the single source of each host's plugin id:
+
+| `uxp.host.name` | Plugin id (storage folder) | Documents adapter | Host module |
+| --- | --- | --- | --- |
+| `InDesign` | `com.atomic.indesign-sessions` | `InDesignDocuments` | `require("indesign").app` |
+| `Photoshop` | `com.atomic.photoshop-sessions` | `PhotoshopDocuments` | `require("photoshop")` (`app`, `core`) |
+
+`main.js` reads `require("uxp").host.name`, looks up the entry, requires only that host's module (requiring the other host's module throws), builds the adapter, and passes the entry's plugin id to `resolveSessionsLocation`. An unrecognized host fails at load with a clear error rather than guessing. A manifest test asserts that each table entry's plugin id equals the `id` in that host's manifest, so the InDesign entry cannot drift from `com.atomic.indesign-sessions` and hide existing sessions. Nothing else in `src/` knows which host it runs in.
 
 <!-- diagram: host-build-layout | Hosts, build, and runtime adapter selection (source: diagrams/host-build-layout.mmd) -->
 ![Hosts, build, and runtime adapter selection](diagrams/host-build-layout.png)
@@ -119,7 +126,8 @@ Adds generated source and makes `src/` differ per package. Runtime selection fro
 ## Code being removed
 
 - Root `manifest.json` — replaced by `hosts/indesign/manifest.json`; the UXP Developer Tool and packaging use `dist/<host>/`.
-- The single-host wiring in `src/main.js` (top-level `require("indesign")` and the fixed InDesign storage folder) — replaced by host selection.
+- The single-host wiring in `src/main.js` (its top-level `require("indesign")`) — replaced by the host table.
+- The fixed InDesign folder constant `kPLUGIN_FOLDER` in `src/sessions/storageLocation.js` — replaced by the plugin-folder parameter.
 - README instructions that load the repository root in the UXP Developer Tool.
 
 `com.sessions` is not modified by this decision.

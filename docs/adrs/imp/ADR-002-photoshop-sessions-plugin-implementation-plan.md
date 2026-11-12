@@ -18,8 +18,8 @@ Two pull requests against `develop`, each from its own `claude/` branch, reviewe
 | Session Catalog | `resolveSessionsLocation({ homeDirectory, platform, pluginFolder })`; callers pass the plugin id as the folder. |
 | Host Integration | New `src/host/PhotoshopDocuments.js` (contract in ADR-002 §4). `InDesignDocuments` unchanged. |
 | Session Workflows | `openSession` awaits `openDocument`. |
-| Panel UI / composition root | `src/main.js` selects the host from `uxp.host.name`, requires only that host's module, builds the adapter and storage location; unknown host throws. |
-| Packaging | `hosts/indesign/manifest.json` (moved from the root, unchanged except location), `hosts/photoshop/manifest.json`, `scripts/build.mjs` (`npm run build`, `npm run package`), `dist/` ignored. Root `manifest.json` removed. |
+| Panel UI / composition root | `src/main.js` host table (`uxp.host.name` → plugin id, adapter, host module); requires only that host's module, builds the adapter and storage location; unknown host throws. |
+| Packaging | `hosts/indesign/manifest.json` (moved from the root, unchanged except location), `hosts/photoshop/manifest.json`, `scripts/build.mjs` (`npm run build`, `npm run package`), `dist/` ignored. Root `manifest.json` removed. `eslint.config.js` ignores `dist/**` (ESLint does not read `.gitignore`); Jest only matches `test/`. |
 
 ## Implementation order (commit checklist)
 
@@ -28,8 +28,9 @@ Two pull requests against `develop`, each from its own `claude/` branch, reviewe
 - [ ] `feat:` `resolveSessionsLocation` takes the plugin folder; tests for both plugin ids on macOS and Windows.
 - [ ] `feat:` `PhotoshopDocuments` with Jest tests against a fake reproducing the observed Photoshop behavior (string `path`, `""` for untitled, cloud identifier, entry-only `app.open`, modal scope).
 - [ ] `feat:` host selection in `main.js`.
-- [ ] `build:` per-host manifests, `scripts/build.mjs`, npm scripts, `.gitignore`; manifest tests cover both manifests (shared `VERSION`, distinct plugin ids, `host.app`/`minVersion`, identical permissions, panel id matches `main.js`, every referenced file present in the built folder).
+- [ ] `build:` per-host manifests, `scripts/build.mjs`, npm scripts, `.gitignore`; manifest tests cover both manifests (shared `VERSION`, distinct plugin ids, each `main.js` host-table plugin id equal to that host manifest's `id`, `host.app`/`minVersion`, identical permissions, panel id matches `main.js`, every referenced file present in the built folder).
 - [ ] `test:` in-host suite for both hosts: shared check core with thin entry scripts (`verify.idjs`, `verify.psjs`); `npm run test:host -- --host indesign|photoshop`. Photoshop runs via `open -a`; cleanup closes only suite-created documents (by id or by path inside the run's work folder).
+- [ ] `docs:` ADR-001 pointer document notes the amendment by ADR-002.
 - [ ] `docs:` README (both hosts, build and load instructions, storage folders) and version 0.3.0 (`VERSION`, `package.json`, `package-lock.json`, both manifests).
 
 ## Verification
