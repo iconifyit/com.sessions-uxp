@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 const kROOT         = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const kDIST         = path.join(kROOT, 'dist');
 const kHOSTS        = ['indesign', 'photoshop'];
-const kSHARED_FILES = ['index.html', 'src', 'icons'];
+const kSHARED_FILES = ['index.html', 'index.js', 'src', 'icons'];
 
 /**
  * Assembles one host's plugin folder.

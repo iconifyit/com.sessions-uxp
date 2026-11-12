@@ -70,6 +70,15 @@ describe('host manifests', () => {
         expect(mainSource).toContain("const kPANEL_ID          = 'sessionsPanel';");
     });
 
+    test('the panel page loads its script from a file the build copies', () => {
+        // Scenario: Photoshop does not run inline scripts in plugin panels, so the page must use <script src>.
+        const html = fs.readFileSync(path.join(kROOT, 'index.html'), 'utf-8');
+        expect(html).toContain('<script src="index.js"></script>');
+        expect(html).not.toMatch(/<script>\s*\S/);
+        const buildSource = fs.readFileSync(path.join(kROOT, 'scripts', 'build.mjs'), 'utf-8');
+        expect(buildSource).toContain("'index.js'");
+    });
+
     test('point at shared files that the build copies into each plugin folder', () => {
         // Scenario: a missing main page or icon fails to load or package.
         for (const manifest of Object.values(kMANIFESTS)) {

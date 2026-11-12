@@ -33,6 +33,12 @@ Two pull requests against `develop`, each from its own `claude/` branch, reviewe
 - [x] `docs:` ADR-001 pointer document notes the amendment by ADR-002.
 - [x] `docs:` README (both hosts, build and load instructions, storage folders) and version 0.3.0 (`VERSION`, `package.json`, `package-lock.json`, both manifests).
 
+## Findings during implementation
+
+- Photoshop does not run inline `<script>` blocks in plugin panels (InDesign does), and a file loaded by `<script src>` resolves `require` from the plugin root. `index.html` therefore loads a root-level `index.js` whose only job is `require('./src/main.js')`; the build copies it. A manifest test guards against reintroducing an inline script.
+- `src/main.js` reports a startup failure in the panel's message area and the UXP log instead of leaving a panel that silently does nothing; dialogs log a non-user rejection of `showModal`.
+- Adobe's installer agent needs an absolute `.ccx` path; a relative path fails with status -160. A host that already has the plugin loaded keeps it in memory until restarted, so an update to an open app takes effect after the app restarts.
+
 ## Verification
 
 - Jest and lint pass.

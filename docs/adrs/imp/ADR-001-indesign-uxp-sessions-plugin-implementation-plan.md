@@ -2,7 +2,7 @@
 
 Governing design: [ADR-001](../ADR-001-indesign-uxp-sessions-plugin/ADR-001-indesign-uxp-sessions-plugin.md) (current version 0.0.2)
 
-Layout note: [ADR-002](../ADR-002-photoshop-sessions-plugin/ADR-002-photoshop-sessions-plugin.md) moved the manifest to `hosts/indesign/manifest.json` and added a copy-only build into `dist/`; references to a root `manifest.json` below describe the v0.1.0–v0.2.0 layout.
+Layout note: [ADR-002](../ADR-002-photoshop-sessions-plugin/ADR-002-photoshop-sessions-plugin.md) moved the manifest to `hosts/indesign/manifest.json` and added a copy-only build into `dist/`; references to a root `manifest.json` and to an inline script in `index.html` below describe the v0.1.0–v0.2.0 layout; `index.html` now loads a root `index.js`.
 
 **Scope contract:** This work delivers the InDesign UXP Sessions plugin described in ADR-001, and nothing else.
 
